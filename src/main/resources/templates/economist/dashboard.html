@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Панель экономиста</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<header>
+    <h1>Финансовая аналитика оборудования</h1>
+    <nav>
+        <a th:href="@{/economist}">Главная</a>
+        <a th:if="${isAdmin}" th:href="@{/admin}">Админка</a>
+        <a th:href="@{/logout}">Выход</a>
+    </nav>
+</header>
+
+<div class="grid two">
+    <div class="card">
+        <h3>Балансовая стоимость</h3>
+        <p><strong>Всего:</strong> <span th:text="${#numbers.formatDecimal(totalValue, 0, 'COMMA', 2, 'POINT')} + ' ₽'">0</span></p>
+        <p><strong>Актив:</strong> <span th:text="${#numbers.formatDecimal(activeValue, 0, 'COMMA', 2, 'POINT')} + ' ₽'">0</span></p>
+        <p><strong>Архив:</strong> <span th:text="${#numbers.formatDecimal(archivedValue, 0, 'COMMA', 2, 'POINT')} + ' ₽'">0</span></p>
+    </div>
+    <div class="card">
+        <h3>Быстрые отчеты</h3>
+        <ul>
+            <li>Стоимость по отделам и помещениям</li>
+            <li>Топ дорогих активов</li>
+            <li>Последние закупки</li>
+        </ul>
+    </div>
+</div>
+
+<div class="grid two">
+    <div class="card">
+        <h3>Стоимость по отделам</h3>
+        <table>
+            <thead>
+            <tr>
+                <th>Отдел</th>
+                <th>Сумма</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="entry : ${valueByDepartment.entrySet()}">
+                <td th:text="${entry.key}">IT</td>
+                <td th:text="${#numbers.formatDecimal(entry.value, 0, 'COMMA', 2, 'POINT')} + ' ₽'">0</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="card">
+        <h3>Стоимость по локациям</h3>
+        <table>
+            <thead>
+            <tr>
+                <th>Локация</th>
+                <th>Сумма</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="entry : ${valueByLocation.entrySet()}">
+                <td th:text="${entry.key}">Каб. 1</td>
+                <td th:text="${#numbers.formatDecimal(entry.value, 0, 'COMMA', 2, 'POINT')} + ' ₽'">0</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="grid two">
+    <div class="card">
+        <h3>Последние закупки</h3>
+        <table>
+            <thead>
+            <tr>
+                <th>Дата</th>
+                <th>Инв. №</th>
+                <th>Название</th>
+                <th>Стоимость</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="item : ${recentPurchases}">
+                <td th:text="${item.purchaseDate != null ? #temporals.format(item.purchaseDate, 'dd.MM.yyyy') : '-'}">01.02.2026</td>
+                <td th:text="${item.inventoryNumber}">PC-0001</td>
+                <td th:text="${item.name}">Станция</td>
+                <td th:text="${#numbers.formatDecimal(item.purchasePrice, 0, 'COMMA', 2, 'POINT')} + ' ₽'">0</td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(recentPurchases)}">
+                <td colspan="4">Данных нет</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="card">
+        <h3>ТОП дорогих активов</h3>
+        <table>
+            <thead>
+            <tr>
+                <th>Инв. №</th>
+                <th>Название</th>
+                <th>Стоимость</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="item : ${mostExpensive}">
+                <td th:text="${item.inventoryNumber}">PC-0002</td>
+                <td th:text="${item.name}">Ноутбук</td>
+                <td th:text="${#numbers.formatDecimal(item.purchasePrice, 0, 'COMMA', 2, 'POINT')} + ' ₽'">0</td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(mostExpensive)}">
+                <td colspan="3">Нет данных</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<body>
+<nav class="admin-sidebar" th:fragment="sidebar(active)">
+    <div class="sidebar-title">IT панель</div>
+    <a th:href="@{/it}" th:classappend="${active == 'dashboard'} ? ' active'">Обзор</a>
+    <a th:href="@{/it/equipment}" th:classappend="${active == 'equipment'} ? ' active'">Устройства</a>
+    <a th:href="@{/it/inventory}" th:classappend="${active == 'inventory'} ? ' active'">Инвентаризация</a>
+    <a th:href="@{/it/maintenance/new}" th:classappend="${active == 'maintenance'} ? ' active'">Новая заявка</a>
+</nav>
+</body>
+</html>

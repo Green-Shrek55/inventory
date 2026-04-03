@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Инвентаризация оборудования</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="admin-shell">
+    <aside th:replace="~{it/fragments/sidebar :: sidebar('inventory')}"></aside>
+    <main class="admin-main" data-remember-scroll>
+        <header class="page-header">
+            <div>
+                <h1>Инвентаризация склада</h1>
+            </div>
+            <div class="page-header-actions">
+                <a class="btn ghost" th:href="@{/logout}">Выход</a>
+            </div>
+        </header>
+
+        <div th:if="${message}" class="flash" th:text="${message}">Сообщение</div>
+        <div th:if="${error}" class="flash error" th:text="${error}">Ошибка</div>
+
+        <div class="card">
+            <h3>Инвентаризационная сессия</h3>
+            <div th:if="${activeSession == null}">
+                <p>Сессия не запущена. Выберите площадку и нажмите кнопку, чтобы зафиксировать старт.</p>
+                <form th:action="@{/it/inventory/start}" method="post" style="display:flex;flex-direction:column;gap:12px;">
+                    <label>
+                        <span>Место проведения</span>
+                        <select name="locationId" required>
+                            <option value="" th:selected="${selectedLocationId == null}">Выберите локацию</option>
+                            <option th:each="loc : ${locations}"
+                                    th:value="${loc.id}"
+                                    th:text="${loc.name}"
+                                    th:selected="${selectedLocationId != null and loc.id == selectedLocationId}"></option>
+                        </select>
+                    </label>
+                    <button type="submit">Начать сессию</button>
+                </form>
+            </div>
+            <div th:if="${activeSession != null}">
+                <p>
+                    Сессия #<strong th:text="${activeSession.id}">1</strong> идёт с
+                    <strong th:text="${#temporals.format(activeSession.startedAt, 'dd.MM.yyyy HH:mm')}">17.02.2026</strong>.
+                </p>
+                <p>Локация: <strong th:text="${activeSession.location != null ? activeSession.location.name : '—'}">Склад</strong></p>
+                <p>Отсканировано: <strong th:text="${activeSession.scannedCount}">0</strong> ед.</p>
+                <form th:action="@{/it/inventory/finish}" method="post" onsubmit="return confirm('Завершить сессию?');">
+                    <button type="submit" class="danger">Завершить</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Сканирование по коду</h3>
+            <p>
+                Укажите инвентарный номер. Сканирование доступно только в рамках активной сессии
+                <span th:if="${activeSession != null && activeSession.location != null}">
+                    (локация <strong th:text="${activeSession.location.name}">Склад</strong>)
+                </span>.
+            </p>
+            <form th:action="@{/it/inventory/scan}" method="post" class="inline" style="gap:12px;">
+                <input type="text" name="code" placeholder="PC-0001" required th:attr="disabled=${activeSession == null}">
+                <button type="submit" th:attr="disabled=${activeSession == null}">Сканировать</button>
+            </form>
+            <p th:if="${activeSession == null}" class="flash" style="margin-top:12px;">Сначала запустите сессию.</p>
+        </div>
+
+        <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                <h3>Устройства на выбранной локации</h3>
+                <span th:text="${currentLocationName != null ? currentLocationName : '—'}">—</span>
+            </div>
+            <table>
+                <thead>
+                <tr>
+                    <th>Инв. №</th>
+                    <th>Название</th>
+                    <th>Последняя инвентаризация</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="item : ${locationItems}">
+                    <td th:text="${item.inventoryNumber}">PC-0001</td>
+                    <td th:text="${item.name}">Станция</td>
+                    <td th:text="${item.lastInventoryScanAt != null ? #temporals.format(item.lastInventoryScanAt, 'dd.MM.yyyy HH:mm') : '—'}">—</td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(locationItems)}">
+                    <td colspan="3" th:text="${selectedLocationId == null ? 'Выберите локацию' : 'Для этой локации нет активных устройств'}">—</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="card">
+    <h3>История сессий</h3>
+    <table>
+        <thead>
+        <tr>
+            <th>#</th>
+            <th>Начато</th>
+            <th>Завершено</th>
+            <th>Кто начал</th>
+            <th>Кто завершил</th>
+            <th>Сканов</th>
+            <th>Отчет</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="sess : ${recentSessions}">
+            <td th:text="${sess.id}">1</td>
+            <td th:text="${#temporals.format(sess.startedAt, 'dd.MM.yyyy HH:mm')}">01.01.2026</td>
+            <td th:text="${sess.finishedAt != null ? #temporals.format(sess.finishedAt, 'dd.MM.yyyy HH:mm') : '—'}">—</td>
+            <td th:text="${sess.startedBy}">it</td>
+            <td th:text="${sess.finishedBy != null ? sess.finishedBy : '—'}">—</td>
+            <td th:text="${sess.scannedCount}">0</td>
+            <td>
+                <a th:if="${sess.scannedCount > 0}"
+                   th:href="@{|/it/inventory/export/${sess.id}|}">Скачать</a>
+                <span th:if="${sess.scannedCount == 0}">—</span>
+            </td>
+        </tr>
+        <tr th:if="${#lists.isEmpty(recentSessions)}">
+            <td colspan="7">Сессий ещё не проводилось</td>
+        </tr>
+        </tbody>
+    </table>
+        </div>
+    </main>
+</div>
+</body>
+</html>

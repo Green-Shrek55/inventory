@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>IT панель</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="admin-shell">
+    <aside th:replace="~{it/fragments/sidebar :: sidebar('dashboard')}"></aside>
+    <main class="admin-main" data-remember-scroll>
+        <header class="page-header">
+            <div>
+                <h1>IT панель технического обслуживания</h1>
+                <p>Сводка по инфраструктуре и открытым заявкам.</p>
+            </div>
+            <div class="page-header-actions">
+                <a class="btn" th:if="${isAdmin}" th:href="@{/admin}">Админка</a>
+                <a class="btn ghost" th:href="@{/logout}">Выход</a>
+            </div>
+        </header>
+
+        <div th:if="${message}" class="flash" th:text="${message}">Сообщение</div>
+        <div th:if="${error}" class="flash error" th:text="${error}">Ошибка</div>
+
+        <div class="card">
+            <h3>Статистика парка</h3>
+            <p><strong>Активных единиц:</strong> <span th:text="${#lists.size(activeEquipment)}">0</span></p>
+            <p><strong>На складе:</strong> <span th:text="${#lists.size(warehouseEquipment)}">0</span></p>
+            <p><strong>В архиве:</strong> <span th:text="${#lists.size(archivedEquipment)}">0</span></p>
+            <p><strong>Открытые заявки:</strong> <span th:text="${#lists.size(tickets)}">0</span></p>
+        </div>
+
+<section class="card">
+    <div class="tabs">
+        <a href="#" class="active">Открытые заявки</a>
+        <a th:href="@{/it/maintenance/new}">+ Новая заявка</a>
+    </div>
+    <table>
+        <thead>
+        <tr>
+            <th>#</th>
+            <th>Оборудование</th>
+            <th>Описание</th>
+            <th>Статус</th>
+            <th>Назначено</th>
+            <th>Обновлено</th>
+            <th>Управление</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="ticket : ${tickets}">
+            <td th:text="${ticket.id}">1</td>
+            <td>
+                <div th:text="${ticket.equipment.inventoryNumber + ' / ' + ticket.equipment.name}">PC-0001</div>
+                <small th:text="${ticket.equipment.location != null ? ticket.equipment.location.name : '-'}">Каб. 1</small>
+            </td>
+            <td>
+                <strong th:text="${ticket.title}">Замена HDD</strong>
+                <div th:text="${ticket.description}">Описание</div>
+            </td>
+            <td th:text="${ticket.status}">NEW</td>
+            <td th:text="${ticket.assignee != null ? ticket.assignee.fullName : '—'}">Иванов</td>
+            <td th:text="${#temporals.format(ticket.updatedAt, 'dd.MM.yyyy HH:mm')}">16.02.2026</td>
+            <td>
+                <form th:action="@{|/it/tickets/${ticket.id}/status|}" method="post" th:object="${statusForm}">
+                    <select th:field="*{status}">
+                        <option th:each="status : ${statuses}"
+                                th:value="${status}"
+                                th:text="${status}"
+                                th:selected="${status == ticket.status}">NEW</option>
+                    </select>
+                    <select th:field="*{assigneeId}">
+                        <option value="">— Исполнитель —</option>
+                        <option th:each="employee : ${employees}"
+                                th:value="${employee.id}"
+                                th:text="${employee.fullName}"
+                                th:selected="${ticket.assignee != null and employee.id == ticket.assignee.id}">Иванов</option>
+                    </select>
+                    <textarea th:field="*{resolutionNote}" placeholder="Комментарий по статусу"></textarea>
+                    <button type="submit">Обновить</button>
+                </form>
+            </td>
+        </tr>
+        <tr th:if="${#lists.isEmpty(tickets)}">
+            <td colspan="7">Открытые заявки отсутствуют</td>
+        </tr>
+        </tbody>
+    </table>
+</section>
+
+<section class="card">
+    <h3>Последние операции</h3>
+    <table>
+        <thead>
+        <tr>
+            <th>Инв. №</th>
+            <th>Название</th>
+            <th>Стоимость</th>
+            <th>Назначено</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="item, iter : ${activeEquipment}" th:if="${iter.count <= 6}">
+            <td th:text="${item.inventoryNumber}">PC-0001</td>
+            <td th:text="${item.name}">Станция</td>
+            <td th:text="${#numbers.formatDecimal(item.purchasePrice, 0, 'COMMA', 2, 'POINT')} + ' ₽'">0</td>
+            <td th:text="${item.assignedTo != null ? item.assignedTo.fullName : '—'}">Иванов</td>
+        </tr>
+        </tbody>
+    </table>
+</section>
+
+<section class="card">
+    <h3>Архив техники</h3>
+    <table>
+        <thead>
+        <tr>
+            <th>Инв. №</th>
+            <th>Название</th>
+            <th>Дата архивации</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="item, iter : ${archivedEquipment}" th:if="${iter.count <= 5}">
+            <td th:text="${item.inventoryNumber}">PC-0002</td>
+            <td th:text="${item.name}">Монитор</td>
+            <td th:text="${item.archivedAt != null ? #temporals.format(item.archivedAt, 'dd.MM.yyyy') : '-'}">16.02.2026</td>
+        </tr>
+        <tr th:if="${#lists.isEmpty(archivedEquipment)}">
+            <td colspan="3">Архив пуст</td>
+        </tr>
+        </tbody>
+    </table>
+</section>
+
+<section class="card">
+    <h3>Недавние обновления заявок</h3>
+    <table>
+        <thead>
+        <tr>
+            <th>#</th>
+            <th>Оборудование</th>
+            <th>Статус</th>
+            <th>Обновлено</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="ticket : ${latestTickets}">
+            <td th:text="${ticket.id}">1</td>
+            <td th:text="${ticket.equipment.inventoryNumber + ' / ' + ticket.equipment.name}">PC-0001</td>
+            <td th:text="${ticket.status}">NEW</td>
+            <td th:text="${#temporals.format(ticket.updatedAt, 'dd.MM.yyyy HH:mm')}">16.02.2026</td>
+        </tr>
+        <tr th:if="${#lists.isEmpty(latestTickets)}">
+            <td colspan="4">История пуста</td>
+        </tr>
+        </tbody>
+    </table>
+</section>
+    </main>
+</div>
+</body>
+</html>

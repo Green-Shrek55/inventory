@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Вход</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <style>
+        body {display:flex; align-items:center; justify-content:center; min-height:100vh;}
+        .login-card {width:360px; padding:32px; box-shadow:0 10px 30px rgba(15,23,42,0.15); border-radius:12px; background:white;}
+        .login-card h2 {margin-top:0;}
+    </style>
+</head>
+<body>
+<div class="login-card">
+    <h2>Вход в систему</h2>
+    <p th:if="${infoMessage}" class="flash" th:text="${infoMessage}">Информация</p>
+    <form th:action="@{/login}" method="post">
+        <label for="username">Логин</label>
+        <input id="username" type="text" name="username" autofocus>
+
+        <label for="password">Пароль</label>
+        <input id="password" type="password" name="password">
+
+        <button type="submit" style="width:100%; margin-top:16px;">Войти</button>
+    </form>
+    <p th:if="${loginError != null and lockUntilEpochMillis == null}" class="flash error" th:text="${loginError}">Неверный логин или пароль</p>
+    <p th:if="${lockUntilEpochMillis != null}" class="flash error">
+        Слишком много неудачных попыток. До разблокировки осталось:
+        <span id="lock-timer" th:attr="data-until=${lockUntilEpochMillis}">00:00</span>
+    </p>
+    <p><a th:href="@{/password/forgot}">Сбросить пароль</a></p>
+    <p th:if="${param.logout}" class="flash">Вы вышли из системы</p>
+</div>
+<script>
+    (function () {
+        const timer = document.getElementById('lock-timer');
+        if (!timer) return;
+
+        const until = Number(timer.dataset.until);
+        if (!until) return;
+
+        function format(ms) {
+            const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            return String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
+        }
+
+        function tick() {
+            const remaining = until - Date.now();
+            timer.textContent = format(remaining);
+            if (remaining <= 0) {
+                window.location.reload();
+                return;
+            }
+            setTimeout(tick, 1000);
+        }
+
+        tick();
+    })();
+</script>
+</body>
+</html>

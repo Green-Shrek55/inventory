@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${editMode} ? 'Edit user' : 'Create user'">User</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="admin-shell">
+    <aside th:replace="~{admin/fragments/sidebar :: sidebar('users')}"></aside>
+    <main class="admin-main" data-remember-scroll>
+        <header class="page-header">
+            <div>
+                <h1 th:text="${editMode} ? 'Edit user' : 'Create user'">Form</h1>
+            </div>
+            <div class="page-header-actions">
+                <a class="btn" th:href="@{/admin/users}">Back</a>
+                <a class="btn ghost" th:href="@{/logout}">Logout</a>
+            </div>
+        </header>
+
+        <div class="card">
+            <form th:action="${editMode} ? @{'/admin/users/' + ${user.id}} : @{/admin/users}"
+                  th:object="${form}"
+                  method="post">
+                <div th:if="${#fields.hasGlobalErrors()}" class="flash error" style="margin-top:0;">
+                    <p th:each="err : ${#fields.globalErrors()}" th:text="${err}">Error</p>
+                </div>
+                <label>Username
+                    <input type="text" th:field="*{username}" th:readonly="${editMode}">
+                </label>
+                <div th:if="${#fields.hasErrors('username')}" class="flash error" th:errors="*{username}">Error</div>
+
+                <label>Email
+                    <input type="email" th:field="*{email}">
+                </label>
+                <div th:if="${#fields.hasErrors('email')}" class="flash error" th:errors="*{email}">Error</div>
+
+                <div th:if="${!editMode}">
+                    <label>Password
+                        <input type="password" th:field="*{password}">
+                    </label>
+                    <div th:if="${#fields.hasErrors('password')}" class="flash error" th:errors="*{password}">Error</div>
+                </div>
+
+                <label>Role
+                    <select th:field="*{role}">
+                        <option value="" disabled selected>Select role</option>
+                        <option th:each="role : ${roles}"
+                                th:value="${role}"
+                                th:text="${role}">ADMIN</option>
+                    </select>
+                </label>
+                <div th:if="${#fields.hasErrors('role')}" class="flash error" th:errors="*{role}">Error</div>
+
+                <label>Department
+                    <select th:field="*{departmentId}">
+                        <option value="">-</option>
+                        <option th:each="dept : ${allDepartments}"
+                                th:value="${dept.id}"
+                                th:text="${dept.name}">IT</option>
+                    </select>
+                </label>
+
+                <label>
+                    <input type="checkbox" th:field="*{enabled}">
+                    Enabled
+                </label>
+
+                <button type="submit" style="margin-top:16px;"
+                        th:text="${editMode} ? 'Save' : 'Create'">Save</button>
+            </form>
+        </div>
+
+        <div class="card" th:if="${editMode}">
+            <h3>Reset password</h3>
+            <form th:action="@{'/admin/users/' + ${user.id} + '/password'}"
+                  th:object="${passwordForm}"
+                  method="post">
+                <label>New password
+                    <input type="password" th:field="*{password}">
+                </label>
+                <div th:if="${#fields.hasErrors('password')}" class="flash error" th:errors="*{password}">Error</div>
+                <button type="submit" style="margin-top:12px;">Update password</button>
+            </form>
+        </div>
+    </main>
+</div>
+<script th:src="@{/js/scroll-restore.js}"></script>
+</body>
+</html>

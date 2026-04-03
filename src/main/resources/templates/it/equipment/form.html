@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${editMode} ? 'Редактирование оборудования' : 'Добавление оборудования'">Форма</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="admin-shell">
+    <aside th:replace="~{it/fragments/sidebar :: sidebar('equipment')}"></aside>
+    <main class="admin-main">
+        <header class="page-header">
+            <div>
+                <h1 th:text="${editMode} ? 'Редактировать устройство' : 'Добавить устройство'">Форма</h1>
+            </div>
+            <div class="page-header-actions">
+                <a class="btn" th:href="@{/it/equipment}">← К списку</a>
+                <a class="btn ghost" th:href="@{/logout}">Выход</a>
+            </div>
+        </header>
+
+        <div class="card">
+            <form th:action="${editMode} ? @{'/it/equipment/' + ${form.id}} : @{/it/equipment}"
+                  th:object="${form}"
+                  method="post">
+        <label>Инвентарный номер
+            <input type="text" th:field="*{inventoryNumber}">
+        </label>
+        <div th:if="${#fields.hasErrors('inventoryNumber')}" class="flash error"
+             th:errors="*{inventoryNumber}">Ошибка</div>
+
+        <label>Название
+            <input type="text" th:field="*{name}">
+        </label>
+        <div th:if="${#fields.hasErrors('name')}" class="flash error" th:errors="*{name}">Ошибка</div>
+
+        <label>Тип
+            <select th:field="*{typeId}">
+                <option value="" disabled selected>Выберите тип</option>
+                <option th:each="type : ${types}"
+                        th:value="${type.id}"
+                        th:text="${type.name}">ПК</option>
+            </select>
+        </label>
+        <div th:if="${#fields.hasErrors('typeId')}" class="flash error" th:errors="*{typeId}">Ошибка</div>
+
+        <label>Расположение (склад/отдел/кабинет)
+            <select th:field="*{locationId}">
+                <option value="" disabled selected>Выберите место</option>
+                <option th:each="location : ${locations}"
+                        th:value="${location.id}"
+                        th:text="${location.name}">Каб. 1</option>
+            </select>
+        </label>
+        <div th:if="${#fields.hasErrors('locationId')}" class="flash error" th:errors="*{locationId}">Ошибка</div>
+
+        <label>Ответственный (сотрудник/отдел)
+            <select th:field="*{employeeId}">
+                <option value="">-</option>
+                <option th:each="employee : ${employees}"
+                        th:value="${employee.id}"
+                        th:text="${employee.fullName + ' / ' + (employee.department != null ? employee.department.name : '-')}">
+                    Иванов
+                </option>
+            </select>
+        </label>
+
+        <label>Стоимость (₽)
+            <input type="number" min="0" step="0.01" th:field="*{purchasePrice}">
+        </label>
+        <div th:if="${#fields.hasErrors('purchasePrice')}" class="flash error" th:errors="*{purchasePrice}">Ошибка</div>
+
+        <label>Дата закупки
+            <input type="date" th:field="*{purchaseDate}">
+        </label>
+        <div th:if="${#fields.hasErrors('purchaseDate')}" class="flash error" th:errors="*{purchaseDate}">Ошибка</div>
+
+                <button type="submit" style="margin-top:16px;" th:if="${editMode}">Сохранить изменения</button>
+                <button type="submit" style="margin-top:16px;" th:if="${!editMode}">Создать</button>
+            </form>
+        </div>
+    </main>
+</div>
+</body>
+</html>

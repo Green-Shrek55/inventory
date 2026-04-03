@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Админ · Журнал действий</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="admin-shell">
+    <aside th:replace="~{admin/fragments/sidebar :: sidebar('logs')}"></aside>
+    <main class="admin-main" data-remember-scroll>
+        <header class="page-header">
+            <div>
+                <h1>Журнал действий</h1>
+                <p>Отслеживайте всё, что происходит в системе, фильтруйте по пользователям и тексту события.</p>
+            </div>
+            <a class="btn ghost" th:href="@{/logout}">Выход</a>
+        </header>
+
+        <section class="card">
+            <form class="grid two" method="get">
+                <label>Пользователь
+                    <select name="actor">
+                        <option value="" th:selected="${selectedActor == null or #strings.isEmpty(selectedActor)}">Все</option>
+                        <option th:each="actorItem : ${actors}"
+                                th:value="${actorItem}"
+                                th:selected="${actorItem == selectedActor}"
+                                th:text="${actorItem}">admin</option>
+                    </select>
+                </label>
+                <label>Текст события
+                    <input type="search" name="query" placeholder="Например: добавлен отдел"
+                           th:value="${searchQuery}">
+                </label>
+                <label>Записей на страницу
+                    <select name="size">
+                        <option th:each="opt : ${new int[]{10,20,30,50,100}}"
+                                th:value="${opt}"
+                                th:selected="${logPage.size == opt}"
+                                th:text="${opt}">20</option>
+                    </select>
+                </label>
+                <div style="display:flex; align-items:flex-end; gap:12px; flex-wrap: wrap;">
+                    <button type="submit">Применить</button>
+                    <a class="btn" th:href="@{/admin}">Сбросить</a>
+                </div>
+            </form>
+        </section>
+
+        <section class="card">
+            <table>
+                <thead>
+                <tr>
+                    <th style="width: 160px;">Время</th>
+                    <th style="width: 180px;">Пользователь</th>
+                    <th>Событие</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="log : ${logs}">
+                    <td th:text="${#temporals.format(log.ts, 'dd.MM.yyyy HH:mm:ss')}">17.02.2026 10:00:00</td>
+                    <td th:text="${log.actor}">admin</td>
+                    <td th:text="${log.message}">Создан пользователь</td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(logs)}">
+                    <td colspan="3">Пока нет записей, как только появятся действия — они окажутся здесь.</td>
+                </tr>
+                </tbody>
+            </table>
+
+            <div class="pagination" th:if="${logPage.totalPages > 1}"
+                 style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                <div>
+                    Страница <strong th:text="${logPage.number + 1}">1</strong> из
+                    <strong th:text="${logPage.totalPages}">3</strong>,
+                    всего <strong th:text="${logPage.totalElements}">0</strong> записей.
+                </div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <a class="btn"
+                       th:classappend="${logPage.first} ? ' disabled'"
+                       th:attr="aria-disabled=${logPage.first}"
+                       th:href="@{/admin(page=${logPage.number - 1},size=${logPage.size},actor=${selectedActor},query=${searchQuery})}">
+                        ← Назад
+                    </a>
+                    <a class="btn"
+                       th:classappend="${logPage.last} ? ' disabled'"
+                       th:attr="aria-disabled=${logPage.last}"
+                       th:href="@{/admin(page=${logPage.number + 1},size=${logPage.size},actor=${selectedActor},query=${searchQuery})}">
+                        Вперёд →
+                    </a>
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+<script th:src="@{/js/scroll-restore.js}"></script>
+</body>
+</html>

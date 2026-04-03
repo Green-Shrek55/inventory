@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<body>
+<nav class="admin-sidebar" th:fragment="sidebar(active)">
+    <button class="sidebar-toggle" type="button" onclick="document.body.classList.toggle('sidebar-collapsed')">
+        ☰ Меню
+    </button>
+    <div class="sidebar-title">Администрирование</div>
+    <a th:href="@{/admin}" th:classappend="${active == 'logs'} ? ' active'">Журнал действий</a>
+    <a th:href="@{/admin/users}" th:classappend="${active == 'users'} ? ' active'">Пользователи</a>
+    <a th:href="@{/admin/directories}" th:classappend="${active == 'directories'} ? ' active'">Оргструктура</a>
+</nav>
+</body>
+</html>

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Инвентаризация оборудования</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<header>
+    <h1>Информационная система учета компьютеров и периферии</h1>
+    <nav>
+        <a th:href="@{/}">Главная</a>
+        <a th:if="${isAdmin}" th:href="@{/admin}">Админка</a>
+        <a th:if="${isAdmin}" th:href="@{/admin/users}">Пользователи</a>
+        <a th:if="${isAdmin}" th:href="@{/admin/directories}">Справочники</a>
+        <a th:if="${isAdmin}" th:href="@{/admin/logs}">Логи</a>
+        <a th:if="${isIt}" th:href="@{/it}">IT-панель</a>
+        <a th:if="${isIt}" th:href="@{/it/equipment}">Устройства</a>
+        <a th:if="${isIt}" th:href="@{/it/inventory}">Инвентаризация</a>
+        <a th:if="${isEconomist}" th:href="@{/economist}">Панель экономиста</a>
+    </nav>
+</header>
+
+<div class="grid two">
+    <div class="card">
+        <h3>Профиль</h3>
+        <p><strong>Пользователь:</strong> <span th:text="${username}">user</span></p>
+        <p><strong>Роли:</strong>
+            <span th:text="${#strings.listJoin(roles, ', ')}">ROLE_ADMIN</span>
+        </p>
+    </div>
+    <div class="card">
+        <h3>Действия</h3>
+        <ul>
+            <li th:if="${isAdmin}"><a th:href="@{/admin/directories}">Управление оргструктурой</a></li>
+            <li th:if="${isAdmin}"><a th:href="@{/admin/users}">Пользователи и роли</a></li>
+            <li th:if="${isAdmin}"><a th:href="@{/admin/backup}">Резервное копирование</a></li>
+            <li th:if="${isIt}"><a th:href="@{/it/equipment}">Учёт устройств и склад</a></li>
+            <li th:if="${isIt}"><a th:href="@{/it/inventory}">Инвентаризация (скан-коды)</a></li>
+            <li th:if="${isIt}"><a th:href="@{/it}">Заявки на ремонт</a></li>
+            <li th:if="${isEconomist}"><a th:href="@{/economist}">Финансовая аналитика парка</a></li>
+        </ul>
+    </div>
+</div>
+
+<section class="card">
+    <h3>Последние активные единицы техники</h3>
+    <table>
+        <thead>
+        <tr>
+            <th>Инв. №</th>
+            <th>Название</th>
+            <th>Тип</th>
+            <th>Местоположение</th>
+            <th>Ответственный</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="item : ${recentEquipment}">
+            <td th:text="${item.inventoryNumber}">0001</td>
+            <td th:text="${item.name}">ПК</td>
+            <td th:text="${item.type != null ? item.type.name : '-'}">ПК</td>
+            <td th:text="${item.location != null ? item.location.name : '-'}">Каб. 1</td>
+            <td th:text="${item.assignedTo != null ? item.assignedTo.fullName : '-'}">Иванов</td>
+        </tr>
+        <tr th:if="${#lists.isEmpty(recentEquipment)}">
+            <td colspan="5">Нет активных записей</td>
+        </tr>
+        </tbody>
+    </table>
+</section>
+
+<section class="card" th:if="${recentLogs != null}">
+    <h3>Последние действия</h3>
+    <table>
+        <thead>
+        <tr>
+            <th>Время</th>
+            <th>Пользователь</th>
+            <th>Действие</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="log : ${recentLogs}">
+            <td th:text="${#temporals.format(log.ts, 'dd.MM.yyyy HH:mm')}">16.02.2026</td>
+            <td th:text="${log.actor}">admin</td>
+            <td th:text="${log.message}">Создано оборудование</td>
+        </tr>
+        </tbody>
+    </table>
+</section>
+
+<form th:action="@{/logout}" method="post">
+    <button type="submit">Выйти</button>
+</form>
+</body>
+</html>

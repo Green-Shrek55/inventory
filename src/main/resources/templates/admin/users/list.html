@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin - Users</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="admin-shell">
+    <aside th:replace="~{admin/fragments/sidebar :: sidebar('users')}"></aside>
+    <main class="admin-main" data-remember-scroll>
+        <header class="page-header">
+            <div>
+                <h1>User management</h1>
+            </div>
+            <div class="page-header-actions">
+                <a class="btn" th:href="@{/admin/users/new}">+ Create</a>
+                <a class="btn ghost" th:href="@{/logout}">Logout</a>
+            </div>
+        </header>
+
+        <div th:if="${message}" class="flash" th:text="${message}">Message</div>
+        <div th:if="${error}" class="flash error" th:text="${error}">Error</div>
+
+        <div class="card">
+            <table>
+                <thead>
+                <tr>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Department</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="user : ${users}">
+                    <td th:text="${user.username}">admin</td>
+                    <td th:text="${user.email}">admin@example.com</td>
+                    <td th:text="${user.role}">ADMIN</td>
+                    <td th:text="${user.department != null ? user.department.name : '-'}">IT</td>
+                    <td th:text="${user.enabled ? 'Enabled' : 'Disabled'}">Enabled</td>
+                    <td>
+                        <a th:href="@{|/admin/users/${user.id}/edit|}">Edit</a>
+                        <form th:action="@{|/admin/users/${user.id}/delete|}" method="post" class="inline"
+                              onsubmit="return confirm('Delete user?');">
+                            <button type="submit" class="danger">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(users)}">
+                    <td colspan="6">No users found</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </main>
+</div>
+<script th:src="@{/js/scroll-restore.js}"></script>
+</body>
+</html>

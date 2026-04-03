@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Новая заявка</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="admin-shell">
+    <aside th:replace="~{it/fragments/sidebar :: sidebar('maintenance')}"></aside>
+    <main class="admin-main">
+        <header class="page-header">
+            <div>
+                <h1>Создание заявки на ремонт</h1>
+            </div>
+            <div class="page-header-actions">
+                <a class="btn ghost" th:href="@{/logout}">Выход</a>
+            </div>
+        </header>
+
+        <div class="card">
+            <form th:action="@{/it/maintenance}" th:object="${form}" method="post">
+        <label>Оборудование
+            <select th:field="*{equipmentId}">
+                <option value="">— Выберите —</option>
+                <option th:each="item : ${equipment}"
+                        th:value="${item.id}"
+                        th:text="${item.inventoryNumber + ' / ' + item.name}">PC-0001</option>
+            </select>
+        </label>
+        <div th:if="${#fields.hasErrors('equipmentId')}" class="flash error" th:errors="*{equipmentId}">Ошибка</div>
+
+        <label>Заголовок
+            <input type="text" th:field="*{title}">
+        </label>
+        <div th:if="${#fields.hasErrors('title')}" class="flash error" th:errors="*{title}">Ошибка</div>
+
+        <label>Описание
+            <textarea th:field="*{description}" rows="4"></textarea>
+        </label>
+
+        <label>Назначить исполнителя
+            <select th:field="*{assigneeId}">
+                <option value="">— Не назначать —</option>
+                <option th:each="employee : ${employees}"
+                        th:value="${employee.id}"
+                        th:text="${employee.fullName}">Иванов</option>
+            </select>
+        </label>
+
+                <button type="submit" style="margin-top:16px;">Создать заявку</button>
+            </form>
+        </div>
+    </main>
+</div>
+</body>
+</html>

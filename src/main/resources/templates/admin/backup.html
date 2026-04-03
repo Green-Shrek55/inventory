@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Админ · Бэкапы</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="admin-shell">
+    <aside th:replace="~{admin/fragments/sidebar :: sidebar('logs')}"></aside>
+    <main class="admin-main">
+        <header class="page-header">
+            <div>
+                <h1>Резервное копирование</h1>
+            </div>
+            <div class="page-header-actions">
+                <a class="btn ghost" th:href="@{/logout}">Выход</a>
+            </div>
+        </header>
+
+        <div class="card">
+            <p>По кнопке ниже выгружается ZIP-архив со всеми ключевыми таблицами (пользователи, справочники, оборудование, заявки, логи). Формат JSON — подходит для восстановления и переноса в PostgreSQL.</p>
+            <a class="btn" th:href="@{/admin/backup/download}">Скачать backup.zip</a>
+        </div>
+
+        <div class="card">
+            <h3>Советы по безопасности</h3>
+            <ul>
+                <li>Храните резервные копии на защищённом носителе.</li>
+                <li>Делайте выгрузку как минимум раз в неделю.</li>
+                <li>После восстановления проверяйте журнал действий.</li>
+            </ul>
+        </div>
+    </main>
+</div>
+</body>
+</html>

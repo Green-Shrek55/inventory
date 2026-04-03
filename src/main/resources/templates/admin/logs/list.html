@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Журнал действий</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<header>
+    <h1>Журнал действий</h1>
+    <nav>
+        <a th:href="@{/admin}">Админка</a>
+        <a th:href="@{/admin/users}">Пользователи</a>
+        <a th:href="@{/admin/backup}">Бэкап</a>
+    </nav>
+</header>
+
+<div class="card">
+    <table>
+        <thead>
+        <tr>
+            <th>Время</th>
+            <th>Пользователь</th>
+            <th>Действие</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="log : ${logs}">
+            <td th:text="${#temporals.format(log.ts, 'dd.MM.yyyy HH:mm')}">16.02.2026</td>
+            <td th:text="${log.actor}">admin</td>
+            <td th:text="${log.message}">Создана запись</td>
+        </tr>
+        <tr th:if="${#lists.isEmpty(logs)}">
+            <td colspan="3">Журнал пуст</td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+</body>
+</html>
