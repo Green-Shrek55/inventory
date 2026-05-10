@@ -88,6 +88,9 @@ public class InventorySessionService {
         if (sessionLocation == null) {
             throw new IllegalStateException("Для сессии не указана локация");
         }
+        if (item.getId() != null && scanRepository.findBySessionIdAndEquipmentId(session.getId(), item.getId()).isPresent()) {
+            throw new IllegalStateException("Эта вещь уже найдена в текущей инвентаризации");
+        }
         session.incrementScans();
         repository.save(session);
 
