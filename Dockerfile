@@ -7,6 +7,6 @@ RUN mvn clean package -DskipTests
 FROM eclipse-temurin:17-jre
 WORKDIR /app
 COPY --from=build /app/target/inventory-system-1.0.0.jar app.jar
-ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75"
-EXPOSE 9091
+ENV JAVA_TOOL_OPTIONS="-XX:+UseSerialGC -XX:MaxRAMPercentage=55"
+EXPOSE 10000
 ENTRYPOINT ["java", "-jar", "app.jar"]
