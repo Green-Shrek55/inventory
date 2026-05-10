@@ -2,16 +2,17 @@
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Админ · Оргструктура</title>
+    <title>Админ · Справочники</title>
     <link rel="stylesheet" th:href="@{/css/app.css}">
 </head>
-<body>
+<body class="directories-page">
 <div class="admin-shell">
     <aside th:replace="~{admin/fragments/sidebar :: sidebar('directories')}"></aside>
     <main class="admin-main" data-remember-scroll>
         <header class="page-header">
             <div>
-                <h1>Справочники оргструктуры</h1>
+                <h1>Справочники учета техники</h1>
+                <p>Создавайте корпуса, кабинеты, склады и типы оборудования.</p>
             </div>
             <div class="page-header-actions">
                 <a class="btn ghost" th:href="@{/logout}">Выход</a>
@@ -19,151 +20,177 @@
         </header>
 
         <div th:if="${message}" class="flash" th:text="${message}">Сообщение</div>
+        <div th:if="${error}" class="flash error" th:text="${error}">Ошибка</div>
 
-        <div class="tabs">
-            <a href="#departments" th:classappend="${activeTab == 'departments'} ? ' active'">Подразделения</a>
-            <a href="#employees" th:classappend="${activeTab == 'employees'} ? ' active'">Сотрудники</a>
-            <a href="#locations" th:classappend="${activeTab == 'locations'} ? ' active'">Локации</a>
-            <a href="#types" th:classappend="${activeTab == 'types'} ? ' active'">Типы техники</a>
-        </div>
-
-        <section id="departments" class="card">
-            <h3>Подразделения</h3>
-            <form th:action="@{/admin/directories/departments}" th:object="${departmentForm}" method="post">
-                <label>Название
-                    <input type="text" th:field="*{name}">
+        <section id="buildings" class="card">
+            <h3>Корпуса</h3>
+            <p>Корпус создается отдельно. Удалить корпус можно только если во всех его кабинетах и складах нет закрепленной техники.</p>
+            <form th:action="@{/admin/directories/buildings}" method="post">
+                <label>Название корпуса
+                    <input type="text" name="name" placeholder="Например: Нахимовский пр. 21">
                 </label>
-                <div th:if="${#fields.hasErrors('name')}" class="flash error" th:errors="*{name}">Ошибка</div>
-                <button type="submit">Добавить</button>
+                <button type="submit">Добавить корпус</button>
             </form>
+
             <table>
                 <thead>
                 <tr>
-                    <th>Название</th>
+                    <th>Корпус</th>
                     <th>Действия</th>
                 </tr>
                 </thead>
                 <tbody>
-                <tr th:each="dept : ${departments}">
+                <tr th:each="building : ${buildings}">
                     <td>
-                        <form th:action="@{|/admin/directories/departments/${dept.id}/rename|}" method="post" class="inline">
-                            <input type="text" name="name" th:value="${dept.name}">
-                            <button type="submit">Сохранить</button>
-                        </form>
+                        <input type="text" name="name" th:value="${building.name}" th:form="'building-update-' + ${building.id}">
                     </td>
                     <td>
-                        <form th:action="@{|/admin/directories/departments/${dept.id}/delete|}" method="post" class="inline"
-                              onsubmit="return confirm('Удалить отдел?');">
-                            <button type="submit" class="danger">Удалить</button>
+                        <form th:id="'building-update-' + ${building.id}" th:action="@{|/admin/directories/buildings/${building.id}/rename|}" method="post" class="inline">
+                            <button type="submit">Сохранить</button>
+                        </form>
+                        <form th:action="@{|/admin/directories/buildings/${building.id}/delete|}" method="post" class="inline"
+                              onsubmit="return confirm('Корпус удалится только если в нем нет техники. Продолжить?');">
+                            <button type="submit" class="danger">Удалить каскадно</button>
                         </form>
                     </td>
                 </tr>
-                <tr th:if="${#lists.isEmpty(departments)}">
-                    <td colspan="2">Пока пусто</td>
+                <tr th:if="${#lists.isEmpty(buildings)}">
+                    <td colspan="2">Корпуса еще не созданы</td>
                 </tr>
                 </tbody>
             </table>
         </section>
 
-        <section id="employees" class="card">
-            <h3>Сотрудники</h3>
-            <form th:action="@{/admin/directories/employees}" th:object="${employeeForm}" method="post">
-                <label>ФИО
-                    <input type="text" th:field="*{fullName}">
+        <section id="locations" class="card directory-mode-card">
+            <div class="placement-mode-head">
+                <div>
+                    <h3>Кабинеты и склады</h3>
+                    <p class="mode-description single-text">Поштучный режим: создавайте, редактируйте и удаляйте отдельные кабинеты или склады.</p>
+                    <p class="mode-description bulk-text">Массовый режим: создавайте или удаляйте диапазоны кабинетов в выбранном корпусе.</p>
+                </div>
+                <label class="mode-switch" title="Массовый режим">
+                    <input type="checkbox" class="directory-bulk-toggle">
+                    <span class="mode-slider"></span>
                 </label>
-                <div th:if="${#fields.hasErrors('fullName')}" class="flash error" th:errors="*{fullName}">Ошибка</div>
+            </div>
 
-                <label>Подразделение
-                    <select th:field="*{departmentId}">
-                        <option value="" disabled selected>Выберите</option>
-                        <option th:each="dept : ${departments}" th:value="${dept.id}" th:text="${dept.name}">IT</option>
-                    </select>
-                </label>
-                <div th:if="${#fields.hasErrors('departmentId')}" class="flash error" th:errors="*{departmentId}">Ошибка</div>
+            <div class="single-location-mode">
+                <form th:action="@{/admin/directories/locations}" method="post">
+                    <label>Корпус
+                        <select name="buildingId" required>
+                            <option value="" disabled selected>Выберите корпус</option>
+                            <option th:each="building : ${buildings}" th:value="${building.id}" th:text="${building.name}">Корпус</option>
+                        </select>
+                    </label>
+                    <label>Название
+                        <input type="text" name="name" placeholder="Например: 305, Кабинет 305 или Склад">
+                    </label>
+                    <label>Тип
+                        <select name="type">
+                            <option th:each="type : ${locationTypes}"
+                                    th:value="${type}"
+                                    th:text="${type.name() == 'WAREHOUSE' ? 'Склад' : 'Кабинет'}">Кабинет</option>
+                        </select>
+                    </label>
+                    <button type="submit">Добавить</button>
+                </form>
 
-                <button type="submit">Добавить</button>
-            </form>
-
-            <table>
-                <thead>
-                <tr>
-                    <th>ФИО</th>
-                    <th>Подразделение</th>
-                    <th>Действия</th>
-                </tr>
-                </thead>
-                <tbody>
-                <tr th:each="emp : ${employees}">
-                    <td>
-                        <form th:action="@{|/admin/directories/employees/${emp.id}|}" method="post" class="inline">
-                            <input type="text" name="fullName" th:value="${emp.fullName}">
-                            <select name="departmentId">
-                                <option th:each="dept : ${departments}"
-                                        th:value="${dept.id}"
-                                        th:selected="${emp.department != null and emp.department.id == dept.id}"
-                                        th:text="${dept.name}">IT</option>
+                <table>
+                    <thead>
+                    <tr>
+                        <th>Корпус</th>
+                        <th>Название</th>
+                        <th>Тип</th>
+                        <th>Действия</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="loc : ${locations}">
+                        <td>
+                            <select name="buildingId" th:form="'location-update-' + ${loc.id}">
+                                <option th:each="building : ${buildings}"
+                                        th:value="${building.id}"
+                                        th:selected="${loc.building != null and building.id == loc.building.id}"
+                                        th:text="${building.name}">Корпус</option>
                             </select>
-                            <button type="submit">Сохранить</button>
-                        </form>
-                    </td>
-                    <td th:text="${emp.department != null ? emp.department.name : '-'}">IT</td>
-                    <td>
-                        <form th:action="@{|/admin/directories/employees/${emp.id}/delete|}" method="post" class="inline"
-                              onsubmit="return confirm('Удалить сотрудника?');">
-                            <button type="submit" class="danger">Удалить</button>
-                        </form>
-                    </td>
-                </tr>
-                <tr th:if="${#lists.isEmpty(employees)}">
-                    <td colspan="3">Нет сотрудников</td>
-                </tr>
-                </tbody>
-            </table>
-        </section>
+                        </td>
+                        <td>
+                            <input type="text" name="name" th:value="${loc.name}" th:form="'location-update-' + ${loc.id}">
+                        </td>
+                        <td>
+                            <select name="type" th:form="'location-update-' + ${loc.id}">
+                                <option th:each="type : ${locationTypes}"
+                                        th:value="${type}"
+                                        th:selected="${loc.type == type}"
+                                        th:text="${type.name() == 'WAREHOUSE' ? 'Склад' : 'Кабинет'}">Кабинет</option>
+                            </select>
+                        </td>
+                        <td>
+                            <form th:id="'location-update-' + ${loc.id}" th:action="@{|/admin/directories/locations/${loc.id}/update|}" method="post" class="inline">
+                                <button type="submit">Сохранить</button>
+                            </form>
+                            <form th:action="@{|/admin/directories/locations/${loc.id}/delete|}" method="post" class="inline"
+                                  onsubmit="return confirm('Локация удалится только если в ней нет техники. Продолжить?');">
+                                <button type="submit" class="danger">Удалить</button>
+                            </form>
+                        </td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(locations)}">
+                        <td colspan="4">Нет данных</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
 
-        <section id="locations" class="card">
-            <h3>Локации</h3>
-            <form th:action="@{/admin/directories/locations}" th:object="${locationForm}" method="post">
-                <label>Название
-                    <input type="text" th:field="*{name}">
-                </label>
-                <div th:if="${#fields.hasErrors('name')}" class="flash error" th:errors="*{name}">Ошибка</div>
-                <button type="submit">Добавить</button>
-            </form>
-            <table>
-                <thead>
-                <tr>
-                    <th>Название</th>
-                    <th>Действия</th>
-                </tr>
-                </thead>
-                <tbody>
-                <tr th:each="loc : ${locations}">
-                    <td>
-                        <form th:action="@{|/admin/directories/locations/${loc.id}/rename|}" method="post" class="inline">
-                            <input type="text" name="name" th:value="${loc.name}">
-                            <button type="submit">Сохранить</button>
-                        </form>
-                    </td>
-                    <td>
-                        <form th:action="@{|/admin/directories/locations/${loc.id}/delete|}" method="post" class="inline"
-                              onsubmit="return confirm('Удалить локацию?');">
-                            <button type="submit" class="danger">Удалить</button>
-                        </form>
-                    </td>
-                </tr>
-                <tr th:if="${#lists.isEmpty(locations)}">
-                    <td colspan="2">Нет данных</td>
-                </tr>
-                </tbody>
-            </table>
+            <div class="bulk-location-mode">
+                <form th:action="@{/admin/directories/locations/bulk-cabinets}" method="post">
+                    <h3>Массовое создание кабинетов</h3>
+                    <p>Например, диапазон 101-140 создаст 40 кабинетов в выбранном корпусе.</p>
+                    <label>Корпус
+                        <select name="buildingId" required>
+                            <option value="" disabled selected>Выберите корпус</option>
+                            <option th:each="building : ${buildings}" th:value="${building.id}" th:text="${building.name}">Корпус</option>
+                        </select>
+                    </label>
+                    <div class="grid two">
+                        <label>С номера
+                            <input type="number" name="from" min="1" placeholder="101">
+                        </label>
+                        <label>По номер
+                            <input type="number" name="to" min="1" placeholder="140">
+                        </label>
+                    </div>
+                    <button type="submit">Создать диапазон</button>
+                </form>
+
+                <form th:action="@{/admin/directories/locations/delete-cabinets}" method="post"
+                      onsubmit="return confirm('Пустые кабинеты из диапазона будут удалены, занятые останутся. Продолжить?');">
+                    <h3 style="margin-top:24px;">Каскадное удаление кабинетов</h3>
+                    <p>Удаляются только пустые кабинеты в выбранном диапазоне. Кабинеты, где числится техника, останутся.</p>
+                    <label>Корпус
+                        <select name="buildingId" required>
+                            <option value="" disabled selected>Выберите корпус</option>
+                            <option th:each="building : ${buildings}" th:value="${building.id}" th:text="${building.name}">Корпус</option>
+                        </select>
+                    </label>
+                    <div class="grid two">
+                        <label>С номера
+                            <input type="number" name="from" min="1" placeholder="101">
+                        </label>
+                        <label>По номер
+                            <input type="number" name="to" min="1" placeholder="140">
+                        </label>
+                    </div>
+                    <button type="submit" class="danger">Удалить пустые из диапазона</button>
+                </form>
+            </div>
         </section>
 
         <section id="types" class="card">
             <h3>Типы техники</h3>
             <form th:action="@{/admin/directories/types}" th:object="${typeForm}" method="post">
                 <label>Название
-                    <input type="text" th:field="*{name}">
+                    <input type="text" th:field="*{name}" placeholder="Например: Ноутбук, Принтер, Монитор">
                 </label>
                 <div th:if="${#fields.hasErrors('name')}" class="flash error" th:errors="*{name}">Ошибка</div>
                 <button type="submit">Добавить</button>
@@ -199,5 +226,23 @@
     </main>
 </div>
 <script th:src="@{/js/scroll-restore.js}"></script>
+<script>
+(() => {
+    const card = document.querySelector('.directory-mode-card');
+    const toggle = document.querySelector('.directory-bulk-toggle');
+    if (!card || !toggle) {
+        return;
+    }
+
+    const applyMode = (bulk) => {
+        card.classList.toggle('bulk-enabled', bulk);
+        toggle.checked = bulk;
+        localStorage.setItem('adminDirectoriesBulkMode', bulk ? '1' : '0');
+    };
+
+    applyMode(localStorage.getItem('adminDirectoriesBulkMode') === '1');
+    toggle.addEventListener('change', () => applyMode(toggle.checked));
+})();
+</script>
 </body>
 </html>

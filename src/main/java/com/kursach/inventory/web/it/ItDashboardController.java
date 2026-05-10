@@ -1,60 +1,69 @@
 package com.kursach.inventory.web.it;
 
-import com.kursach.inventory.domain.MaintenanceStatus;
-import com.kursach.inventory.service.EmployeeService;
 import com.kursach.inventory.service.EquipmentService;
-import com.kursach.inventory.service.MaintenanceTicketService;
-import com.kursach.inventory.web.dto.MaintenanceStatusForm;
-import jakarta.validation.Valid;
+import com.kursach.inventory.service.EquipmentTypeService;
+import com.kursach.inventory.service.LocationService;
+import com.kursach.inventory.service.BuildingService;
+import jakarta.servlet.http.HttpSession;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import java.util.List;
+
+import static com.kursach.inventory.web.it.WarehouseContextController.BUILDING_ID_SESSION_KEY;
 
 @Controller
-@RequestMapping("/it")
+@RequestMapping("/warehouse")
 public class ItDashboardController {
     private final EquipmentService equipmentService;
-    private final MaintenanceTicketService ticketService;
-    private final EmployeeService employeeService;
+    private final EquipmentTypeService typeService;
+    private final LocationService locationService;
+    private final BuildingService buildingService;
 
     public ItDashboardController(EquipmentService equipmentService,
-                                 MaintenanceTicketService ticketService,
-                                 EmployeeService employeeService) {
+                                 EquipmentTypeService typeService,
+                                 LocationService locationService,
+                                 BuildingService buildingService) {
         this.equipmentService = equipmentService;
-        this.ticketService = ticketService;
-        this.employeeService = employeeService;
+        this.typeService = typeService;
+        this.locationService = locationService;
+        this.buildingService = buildingService;
     }
 
     @GetMapping
-    public String dashboard(Authentication authentication, Model model) {
-        model.addAttribute("activeEquipment", equipmentService.listActive());
-        model.addAttribute("archivedEquipment", equipmentService.listArchived());
-        model.addAttribute("warehouseEquipment", equipmentService.listWarehouse());
-        model.addAttribute("tickets", ticketService.listActive());
-        model.addAttribute("latestTickets", ticketService.latest());
-        model.addAttribute("statusForm", new MaintenanceStatusForm());
-        model.addAttribute("statuses", MaintenanceStatus.values());
-        model.addAttribute("employees", employeeService.listAll());
+    public String dashboard(@RequestParam(value = "typeIds", required = false) List<Long> typeIds,
+                            @RequestParam(value = "locationId", required = false) Long locationId,
+                            @RequestParam(value = "inventoryNumber", required = false) String inventoryNumber,
+                            HttpSession session,
+                            Authentication authentication,
+                            Model model) {
+        Long buildingId = currentBuildingId(session);
+        List<com.kursach.inventory.domain.EquipmentItem> activeEquipment = equipmentService.listActive(buildingId);
+        List<com.kursach.inventory.domain.EquipmentItem> filteredEquipment = activeEquipment.stream()
+                .filter(item -> typeIds == null || typeIds.isEmpty()
+                        || (item.getType() != null && typeIds.contains(item.getType().getId())))
+                .filter(item -> locationId == null
+                        || (item.getLocation() != null && locationId.equals(item.getLocation().getId())))
+                .filter(item -> inventoryNumber == null || inventoryNumber.isBlank()
+                        || item.getInventoryNumber().toLowerCase().contains(inventoryNumber.trim().toLowerCase()))
+                .toList();
+
+        model.addAttribute("activeEquipment", activeEquipment);
+        model.addAttribute("filteredEquipment", filteredEquipment);
+        model.addAttribute("archivedEquipment", equipmentService.listArchived(buildingId));
+        model.addAttribute("warehouseEquipment", equipmentService.listWarehouseByBuilding(buildingId));
+        model.addAttribute("disposalDueEquipment", equipmentService.listDisposalDue(buildingId));
+        model.addAttribute("equipmentTypes", typeService.listAll());
+        model.addAttribute("locations", locationService.listByBuilding(buildingId));
+        model.addAttribute("buildings", buildingService.listAll());
+        model.addAttribute("selectedBuildingId", buildingId);
+        model.addAttribute("selectedTypeIds", typeIds == null ? List.of() : typeIds);
+        model.addAttribute("selectedLocationId", locationId);
+        model.addAttribute("selectedInventoryNumber", inventoryNumber == null ? "" : inventoryNumber.trim());
         model.addAttribute("isAdmin", hasRole(authentication, "ROLE_ADMIN"));
         return "it/dashboard";
-    }
-
-    @PostMapping("/tickets/{id}/status")
-    public String updateStatus(@PathVariable Long id,
-                               @Valid @ModelAttribute("statusForm") MaintenanceStatusForm form,
-                               BindingResult bindingResult,
-                               Authentication authentication,
-                               RedirectAttributes redirectAttributes) {
-        if (bindingResult.hasErrors()) {
-            redirectAttributes.addFlashAttribute("error", "Не удалось обновить статус: " + bindingResult.getAllErrors().get(0).getDefaultMessage());
-            return "redirect:/it";
-        }
-        ticketService.updateStatus(id, form.getStatus(), form.getResolutionNote(), form.getAssigneeId(), actor(authentication));
-        redirectAttributes.addFlashAttribute("message", "Статус обновлен");
-        return "redirect:/it";
     }
 
     private boolean hasRole(Authentication authentication, String role) {
@@ -63,7 +72,9 @@ public class ItDashboardController {
                 .anyMatch(a -> role.equals(a.getAuthority()));
     }
 
-    private String actor(Authentication authentication) {
-        return authentication == null ? "system" : authentication.getName();
+    private Long currentBuildingId(HttpSession session) {
+        Object value = session.getAttribute(BUILDING_ID_SESSION_KEY);
+        return value instanceof Long id ? id : null;
     }
+
 }

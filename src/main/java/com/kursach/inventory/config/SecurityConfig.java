@@ -6,6 +6,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -46,7 +47,8 @@ public class SecurityConfig {
                 .requestMatchers("/h2-console/**", "/login", "/login/cancel", "/login/verify", "/login/resend", "/password/forgot", "/password/confirm", "/password/reset", "/css/**", "/js/**", "/images/**").permitAll()
                 .requestMatchers("/post-login").authenticated()
                 .requestMatchers("/admin/**").hasRole("ADMIN")
-                .requestMatchers("/it/**").hasAnyRole("ADMIN", "IT")
+                .requestMatchers("/warehouse/**").hasAnyRole("ADMIN", "WAREHOUSE")
+                .requestMatchers("/api/warehouse/**").hasAnyRole("ADMIN", "WAREHOUSE")
                 .requestMatchers("/economist/**").hasAnyRole("ADMIN", "ECONOMIST")
                 .anyRequest().authenticated()
             )
@@ -60,9 +62,10 @@ public class SecurityConfig {
                 .logoutSuccessUrl("/login?logout")
                 .permitAll()
             )
+            .httpBasic(Customizer.withDefaults())
             .requestCache(cache -> cache.disable());
 
-        http.csrf(csrf -> csrf.ignoringRequestMatchers("/h2-console/**"));
+        http.csrf(csrf -> csrf.ignoringRequestMatchers("/h2-console/**", "/api/**"));
         http.headers(h -> h.frameOptions(f -> f.sameOrigin()));
 
         return http.build();

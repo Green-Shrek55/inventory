@@ -1,7 +1,16 @@
 (() => {
+    const container = document.querySelector('[data-remember-scroll]');
+    if (!container) {
+        return;
+    }
+
     const key = `scroll:${location.pathname}${location.search}`;
 
     const restore = () => {
+        if (location.hash) {
+            return;
+        }
+
         const saved = sessionStorage.getItem(key);
         if (saved) {
             window.scrollTo(0, parseInt(saved, 10));

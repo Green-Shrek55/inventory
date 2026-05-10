@@ -1,3 +1,10 @@
 target/
 .idea/
 *.iml
+mobile_warehouse_app/.dart_tool/
+mobile_warehouse_app/build/
+mobile_warehouse_app/android/build/
+mobile_warehouse_app/android/.gradle/
+mobile_warehouse_app/android/local.properties
+mobile_warehouse_app/.flutter-plugins
+mobile_warehouse_app/.flutter-plugins-dependencies

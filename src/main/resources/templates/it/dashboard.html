@@ -2,7 +2,7 @@
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>IT панель</title>
+    <title>Учет техники</title>
     <link rel="stylesheet" th:href="@{/css/app.css}">
 </head>
 <body>
@@ -11,10 +11,19 @@
     <main class="admin-main" data-remember-scroll>
         <header class="page-header">
             <div>
-                <h1>IT панель технического обслуживания</h1>
-                <p>Сводка по инфраструктуре и открытым заявкам.</p>
+                <h1>Панель учета техники</h1>
+                <p>Контроль наличия, размещения, инвентаризации и утилизации компьютерной техники и периферии.</p>
             </div>
             <div class="page-header-actions">
+                <form th:action="@{/warehouse/context/building}" method="post" class="inline building-context-form">
+                    <select name="buildingId" onchange="this.form.submit()">
+                        <option value="">Все корпуса</option>
+                        <option th:each="building : ${buildings}"
+                                th:value="${building.id}"
+                                th:selected="${selectedBuildingId != null and building.id == selectedBuildingId}"
+                                th:text="${building.name}">Корпус</option>
+                    </select>
+                </form>
                 <a class="btn" th:if="${isAdmin}" th:href="@{/admin}">Админка</a>
                 <a class="btn ghost" th:href="@{/logout}">Выход</a>
             </div>
@@ -24,141 +33,118 @@
         <div th:if="${error}" class="flash error" th:text="${error}">Ошибка</div>
 
         <div class="card">
-            <h3>Статистика парка</h3>
+            <h3>Состояние фонда техники</h3>
             <p><strong>Активных единиц:</strong> <span th:text="${#lists.size(activeEquipment)}">0</span></p>
-            <p><strong>На складе:</strong> <span th:text="${#lists.size(warehouseEquipment)}">0</span></p>
-            <p><strong>В архиве:</strong> <span th:text="${#lists.size(archivedEquipment)}">0</span></p>
-            <p><strong>Открытые заявки:</strong> <span th:text="${#lists.size(tickets)}">0</span></p>
+            <p><strong>На складах:</strong> <span th:text="${#lists.size(warehouseEquipment)}">0</span></p>
+            <p><strong>В архиве / списано:</strong> <span th:text="${#lists.size(archivedEquipment)}">0</span></p>
+            <p th:if="${!#lists.isEmpty(disposalDueEquipment)}" class="utilization-warning">
+                ✓ Требуется утилизация: <strong th:text="${#lists.size(disposalDueEquipment)}">0</strong> ед.
+            </p>
         </div>
 
-<section class="card">
-    <div class="tabs">
-        <a href="#" class="active">Открытые заявки</a>
-        <a th:href="@{/it/maintenance/new}">+ Новая заявка</a>
-    </div>
-    <table>
-        <thead>
-        <tr>
-            <th>#</th>
-            <th>Оборудование</th>
-            <th>Описание</th>
-            <th>Статус</th>
-            <th>Назначено</th>
-            <th>Обновлено</th>
-            <th>Управление</th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr th:each="ticket : ${tickets}">
-            <td th:text="${ticket.id}">1</td>
-            <td>
-                <div th:text="${ticket.equipment.inventoryNumber + ' / ' + ticket.equipment.name}">PC-0001</div>
-                <small th:text="${ticket.equipment.location != null ? ticket.equipment.location.name : '-'}">Каб. 1</small>
-            </td>
-            <td>
-                <strong th:text="${ticket.title}">Замена HDD</strong>
-                <div th:text="${ticket.description}">Описание</div>
-            </td>
-            <td th:text="${ticket.status}">NEW</td>
-            <td th:text="${ticket.assignee != null ? ticket.assignee.fullName : '—'}">Иванов</td>
-            <td th:text="${#temporals.format(ticket.updatedAt, 'dd.MM.yyyy HH:mm')}">16.02.2026</td>
-            <td>
-                <form th:action="@{|/it/tickets/${ticket.id}/status|}" method="post" th:object="${statusForm}">
-                    <select th:field="*{status}">
-                        <option th:each="status : ${statuses}"
-                                th:value="${status}"
-                                th:text="${status}"
-                                th:selected="${status == ticket.status}">NEW</option>
+        <section class="card">
+            <h3>Фильтр техники</h3>
+            <form th:action="@{/warehouse}" method="get" class="dashboard-filter-form">
+                <label>Типы техники
+                    <select name="typeIds" multiple size="5">
+                        <option th:each="type : ${equipmentTypes}"
+                                th:value="${type.id}"
+                                th:selected="${selectedTypeIds.contains(type.id)}"
+                                th:text="${type.name}">Тип</option>
                     </select>
-                    <select th:field="*{assigneeId}">
-                        <option value="">— Исполнитель —</option>
-                        <option th:each="employee : ${employees}"
-                                th:value="${employee.id}"
-                                th:text="${employee.fullName}"
-                                th:selected="${ticket.assignee != null and employee.id == ticket.assignee.id}">Иванов</option>
+                </label>
+                <label>Кабинет или склад
+                    <input type="text" class="location-select-filter" placeholder="Поиск по кабинету, например 205">
+                    <select name="locationId" class="filterable-location-select">
+                        <option value="">Все места текущего корпуса</option>
+                        <option th:each="loc : ${locations}"
+                                th:value="${loc.id}"
+                                th:selected="${selectedLocationId != null and loc.id == selectedLocationId}"
+                                th:data-search="${loc.name.toLowerCase()}"
+                                th:text="${loc.name}">Кабинет</option>
                     </select>
-                    <textarea th:field="*{resolutionNote}" placeholder="Комментарий по статусу"></textarea>
-                    <button type="submit">Обновить</button>
-                </form>
-            </td>
-        </tr>
-        <tr th:if="${#lists.isEmpty(tickets)}">
-            <td colspan="7">Открытые заявки отсутствуют</td>
-        </tr>
-        </tbody>
-    </table>
-</section>
+                </label>
+                <label>Инвентарный номер / ШК
+                    <input type="text" name="inventoryNumber" th:value="${selectedInventoryNumber}" placeholder="Например: LO-00000001001">
+                </label>
+                <div class="filter-actions">
+                    <button type="submit">Показать</button>
+                    <a class="btn ghost" th:href="@{/warehouse}">Сбросить</a>
+                </div>
+            </form>
+        </section>
 
-<section class="card">
-    <h3>Последние операции</h3>
-    <table>
-        <thead>
-        <tr>
-            <th>Инв. №</th>
-            <th>Название</th>
-            <th>Стоимость</th>
-            <th>Назначено</th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr th:each="item, iter : ${activeEquipment}" th:if="${iter.count <= 6}">
-            <td th:text="${item.inventoryNumber}">PC-0001</td>
-            <td th:text="${item.name}">Станция</td>
-            <td th:text="${#numbers.formatDecimal(item.purchasePrice, 0, 'COMMA', 2, 'POINT')} + ' ₽'">0</td>
-            <td th:text="${item.assignedTo != null ? item.assignedTo.fullName : '—'}">Иванов</td>
-        </tr>
-        </tbody>
-    </table>
-</section>
+        <section class="card">
+            <div class="tabs">
+                <a th:href="@{/warehouse/equipment#placement}">Перейти к размещению</a>
+                <a th:href="@{/warehouse/inventory}">Провести инвентаризацию</a>
+                <a th:href="@{/warehouse/equipment#disposal}" th:classappend="${!#lists.isEmpty(disposalDueEquipment)} ? ' warning-tab'">Утилизация</a>
+            </div>
+            <table>
+                <thead>
+                <tr>
+                    <th>Инв. №</th>
+                    <th>Название</th>
+                    <th>Тип</th>
+                    <th>Место размещения</th>
+                    <th>Стоимость</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="item : ${filteredEquipment}">
+                    <td th:text="${item.inventoryNumber}">LO-00000001</td>
+                    <td th:text="${item.name}">Станция</td>
+                    <td th:text="${item.type != null ? item.type.name : '-'}">Тип</td>
+                    <td th:text="${item.location != null ? item.location.name : 'Не указано'}">Кабинет 101</td>
+                    <td th:text="${#numbers.formatDecimal(item.purchasePrice, 0, 'COMMA', 2, 'POINT')} + ' ₽'">0</td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(filteredEquipment)}">
+                    <td colspan="5">По выбранным фильтрам техника не найдена</td>
+                </tr>
+                </tbody>
+            </table>
+        </section>
 
-<section class="card">
-    <h3>Архив техники</h3>
-    <table>
-        <thead>
-        <tr>
-            <th>Инв. №</th>
-            <th>Название</th>
-            <th>Дата архивации</th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr th:each="item, iter : ${archivedEquipment}" th:if="${iter.count <= 5}">
-            <td th:text="${item.inventoryNumber}">PC-0002</td>
-            <td th:text="${item.name}">Монитор</td>
-            <td th:text="${item.archivedAt != null ? #temporals.format(item.archivedAt, 'dd.MM.yyyy') : '-'}">16.02.2026</td>
-        </tr>
-        <tr th:if="${#lists.isEmpty(archivedEquipment)}">
-            <td colspan="3">Архив пуст</td>
-        </tr>
-        </tbody>
-    </table>
-</section>
-
-<section class="card">
-    <h3>Недавние обновления заявок</h3>
-    <table>
-        <thead>
-        <tr>
-            <th>#</th>
-            <th>Оборудование</th>
-            <th>Статус</th>
-            <th>Обновлено</th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr th:each="ticket : ${latestTickets}">
-            <td th:text="${ticket.id}">1</td>
-            <td th:text="${ticket.equipment.inventoryNumber + ' / ' + ticket.equipment.name}">PC-0001</td>
-            <td th:text="${ticket.status}">NEW</td>
-            <td th:text="${#temporals.format(ticket.updatedAt, 'dd.MM.yyyy HH:mm')}">16.02.2026</td>
-        </tr>
-        <tr th:if="${#lists.isEmpty(latestTickets)}">
-            <td colspan="4">История пуста</td>
-        </tr>
-        </tbody>
-    </table>
-</section>
+        <section class="card" th:if="${!#lists.isEmpty(disposalDueEquipment)}">
+            <h3>Требуется утилизация</h3>
+            <p>В список попадает активная техника, дата покупки которой старше 3 лет.</p>
+            <table>
+                <thead>
+                <tr>
+                    <th>Инв. №</th>
+                    <th>Название</th>
+                    <th>Место</th>
+                    <th>Дата покупки</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="item : ${disposalDueEquipment}">
+                    <td th:text="${item.inventoryNumber}">LO-00000006</td>
+                    <td th:text="${item.name}">ПК</td>
+                    <td th:text="${item.location != null ? item.location.name : '-'}">Кабинет</td>
+                    <td th:text="${item.purchaseDate != null ? #temporals.format(item.purchaseDate, 'dd.MM.yyyy') : '-'}">01.01.2020</td>
+                </tr>
+                </tbody>
+            </table>
+        </section>
     </main>
 </div>
+<script>
+document.querySelectorAll('.location-select-filter').forEach((input) => {
+    const select = input.parentElement.querySelector('.filterable-location-select');
+    const options = Array.from(select.options);
+
+    input.addEventListener('input', () => {
+        const query = input.value.trim().toLowerCase();
+        options.forEach((option, index) => {
+            if (index === 0) {
+                option.hidden = false;
+                return;
+            }
+            option.hidden = !(option.dataset.search || '').includes(query);
+        });
+    });
+});
+</script>
 </body>
 </html>

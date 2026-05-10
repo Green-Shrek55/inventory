@@ -4,6 +4,7 @@ import com.kursach.inventory.domain.Employee;
 import com.kursach.inventory.domain.EquipmentItem;
 import com.kursach.inventory.domain.EquipmentType;
 import com.kursach.inventory.domain.Location;
+import com.kursach.inventory.domain.LocationType;
 import com.kursach.inventory.repo.EmployeeRepository;
 import com.kursach.inventory.repo.EquipmentItemRepository;
 import com.kursach.inventory.repo.EquipmentTypeRepository;
@@ -19,6 +20,8 @@ import java.util.Optional;
 
 @Service
 public class EquipmentService {
+    public static final int DEFAULT_USEFUL_LIFE_YEARS = 3;
+
     private final EquipmentItemRepository repo;
     private final EquipmentTypeRepository typeRepository;
     private final LocationRepository locationRepository;
@@ -44,12 +47,57 @@ public class EquipmentService {
         return repo.findByArchivedFalseOrderByInventoryNumberAsc();
     }
 
+    public List<EquipmentItem> listActive(Long buildingId) {
+        if (buildingId == null) {
+            return listActive();
+        }
+        return repo.findByLocation_Building_IdAndArchivedFalseOrderByInventoryNumberAsc(buildingId);
+    }
+
     public List<EquipmentItem> listArchived() {
         return repo.findByArchivedTrueOrderByArchivedAtDesc();
     }
 
+    public List<EquipmentItem> listArchived(Long buildingId) {
+        if (buildingId == null) {
+            return listArchived();
+        }
+        return repo.findByLocation_Building_IdAndArchivedTrueOrderByArchivedAtDesc(buildingId);
+    }
+
+    public List<EquipmentItem> listDisposalDue() {
+        return repo.findByArchivedFalseAndPurchaseDateLessThanEqualOrderByPurchaseDateAscInventoryNumberAsc(
+                LocalDate.now().minusYears(DEFAULT_USEFUL_LIFE_YEARS));
+    }
+
+    public List<EquipmentItem> listDisposalDue(Long buildingId) {
+        List<EquipmentItem> dueItems = listDisposalDue();
+        if (buildingId == null) {
+            return dueItems;
+        }
+        return dueItems.stream()
+                .filter(item -> item.getLocation() != null
+                        && item.getLocation().getBuilding() != null
+                        && buildingId.equals(item.getLocation().getBuilding().getId()))
+                .toList();
+    }
+
     public List<EquipmentItem> listWarehouse() {
-        return repo.findByLocation_NameIgnoreCaseAndArchivedFalseOrderByInventoryNumberAsc("Склад");
+        return repo.findByLocation_TypeAndArchivedFalseOrderByInventoryNumberAsc(LocationType.WAREHOUSE);
+    }
+
+    public List<EquipmentItem> listWarehouseByBuilding(Long buildingId) {
+        if (buildingId == null) {
+            return listWarehouse();
+        }
+        return repo.findByLocation_Building_IdAndLocation_TypeAndArchivedFalseOrderByInventoryNumberAsc(buildingId, LocationType.WAREHOUSE);
+    }
+
+    public List<EquipmentItem> listWarehouse(Long warehouseId) {
+        if (warehouseId == null) {
+            return listWarehouse();
+        }
+        return repo.findByLocation_IdAndLocation_TypeAndArchivedFalseOrderByInventoryNumberAsc(warehouseId, LocationType.WAREHOUSE);
     }
 
     public List<EquipmentItem> listByLocation(Long locationId) {
@@ -61,6 +109,13 @@ public class EquipmentService {
 
     public Optional<EquipmentItem> findById(Long id) {
         return repo.findById(id);
+    }
+
+    public Optional<EquipmentItem> findByInventoryNumber(String inventoryNumber) {
+        if (inventoryNumber == null || inventoryNumber.isBlank()) {
+            return Optional.empty();
+        }
+        return repo.findByInventoryNumber(inventoryNumber.trim());
     }
 
     @Transactional

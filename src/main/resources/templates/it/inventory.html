@@ -5,129 +5,272 @@
     <title>Инвентаризация оборудования</title>
     <link rel="stylesheet" th:href="@{/css/app.css}">
 </head>
-<body>
+<body th:data-active-session="${activeSession != null}">
 <div class="admin-shell">
     <aside th:replace="~{it/fragments/sidebar :: sidebar('inventory')}"></aside>
     <main class="admin-main" data-remember-scroll>
         <header class="page-header">
             <div>
-                <h1>Инвентаризация склада</h1>
+                <h1>Инвентаризация оборудования</h1>
+                <p>Проверка фактического наличия техники в выбранном кабинете или складе.</p>
             </div>
             <div class="page-header-actions">
+                <form th:action="@{/warehouse/context/building}" method="post" class="inline building-context-form">
+                    <select name="buildingId" onchange="this.form.submit()">
+                        <option value="">Выберите корпус</option>
+                        <option th:each="building : ${buildings}"
+                                th:value="${building.id}"
+                                th:selected="${selectedBuildingId != null and building.id == selectedBuildingId}"
+                                th:text="${building.name}">Корпус</option>
+                    </select>
+                </form>
                 <a class="btn ghost" th:href="@{/logout}">Выход</a>
             </div>
         </header>
 
         <div th:if="${message}" class="flash" th:text="${message}">Сообщение</div>
         <div th:if="${error}" class="flash error" th:text="${error}">Ошибка</div>
+        <div th:if="${selectedBuildingId == null}" class="flash error">
+            Сначала выберите корпус справа сверху. Без корпуса нельзя выбрать кабинет, начать сессию или сканировать технику.
+        </div>
 
         <div class="card">
             <h3>Инвентаризационная сессия</h3>
             <div th:if="${activeSession == null}">
-                <p>Сессия не запущена. Выберите площадку и нажмите кнопку, чтобы зафиксировать старт.</p>
-                <form th:action="@{/it/inventory/start}" method="post" style="display:flex;flex-direction:column;gap:12px;">
-                    <label>
-                        <span>Место проведения</span>
-                        <select name="locationId" required>
-                            <option value="" th:selected="${selectedLocationId == null}">Выберите локацию</option>
-                            <option th:each="loc : ${locations}"
-                                    th:value="${loc.id}"
-                                    th:text="${loc.name}"
-                                    th:selected="${selectedLocationId != null and loc.id == selectedLocationId}"></option>
-                        </select>
-                    </label>
-                    <button type="submit">Начать сессию</button>
+                <p>Выберите кабинет или склад текущего корпуса. До запуска можно предварительно посмотреть, какая техника числится на этой локации.</p>
+                <form th:action="@{/warehouse/inventory/start}" method="post" class="placement-save-form">
+                    <input type="hidden" name="locationId" class="selected-location-id" th:value="${selectedLocationId}">
+                    <div class="location-picker inventory-location-picker">
+                        <label>Место проведения</label>
+                        <button type="button" class="current-location-button location-picker-toggle" th:disabled="${selectedBuildingId == null}">
+                            <span>Кабинет или склад</span>
+                            <strong th:text="${selectedBuildingId == null ? 'Сначала выберите корпус' : (currentLocationName != null ? currentLocationName : 'Выберите кабинет')}">Выберите кабинет</strong>
+                        </button>
+                        <div class="location-picker-panel">
+                            <input type="text" class="location-filter" placeholder="Введите часть номера кабинета, например 205">
+                            <div class="location-options">
+                                <button type="button"
+                                        th:each="loc : ${locations}"
+                                        class="location-option"
+                                        th:classappend="${selectedLocationId != null and loc.id == selectedLocationId} ? ' selected'"
+                                        th:data-location-id="${loc.id}"
+                                        th:data-location-label="${loc.name}"
+                                        th:data-search="${loc.name.toLowerCase()}"
+                                        th:text="${loc.name}">Кабинет</button>
+                            </div>
+                        </div>
+                        <p class="selected-location-label"
+                           th:text="${currentLocationName != null ? 'Выбрано: ' + currentLocationName : 'Место не выбрано'}">Место не выбрано</p>
+                    </div>
+                    <button type="submit" th:disabled="${selectedBuildingId == null}">Начать сессию</button>
                 </form>
             </div>
             <div th:if="${activeSession != null}">
                 <p>
-                    Сессия #<strong th:text="${activeSession.id}">1</strong> идёт с
+                    Сессия #<strong th:text="${activeSession.id}">1</strong> идет с
                     <strong th:text="${#temporals.format(activeSession.startedAt, 'dd.MM.yyyy HH:mm')}">17.02.2026</strong>.
                 </p>
-                <p>Локация: <strong th:text="${activeSession.location != null ? activeSession.location.name : '—'}">Склад</strong></p>
-                <p>Отсканировано: <strong th:text="${activeSession.scannedCount}">0</strong> ед.</p>
-                <form th:action="@{/it/inventory/finish}" method="post" onsubmit="return confirm('Завершить сессию?');">
+                <p>Локация: <strong th:text="${activeSession.location != null ? activeSession.location.name : '—'}">Кабинет</strong></p>
+                <p>Всего сканов: <strong th:text="${activeSession.scannedCount}">0</strong></p>
+                <form th:action="@{/warehouse/inventory/finish}" method="post" onsubmit="return confirm('Завершить сессию?');">
                     <button type="submit" class="danger">Завершить</button>
                 </form>
             </div>
         </div>
 
-        <div class="card">
-            <h3>Сканирование по коду</h3>
-            <p>
-                Укажите инвентарный номер. Сканирование доступно только в рамках активной сессии
-                <span th:if="${activeSession != null && activeSession.location != null}">
-                    (локация <strong th:text="${activeSession.location.name}">Склад</strong>)
-                </span>.
-            </p>
-            <form th:action="@{/it/inventory/scan}" method="post" class="inline" style="gap:12px;">
-                <input type="text" name="code" placeholder="PC-0001" required th:attr="disabled=${activeSession == null}">
-                <button type="submit" th:attr="disabled=${activeSession == null}">Сканировать</button>
-            </form>
-            <p th:if="${activeSession == null}" class="flash" style="margin-top:12px;">Сначала запустите сессию.</p>
-        </div>
-
-        <div class="card">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-                <h3>Устройства на выбранной локации</h3>
-                <span th:text="${currentLocationName != null ? currentLocationName : '—'}">—</span>
+        <div class="card" th:if="${activeSession == null}">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:12px;flex-wrap:wrap;">
+                <h3>Предварительный состав локации</h3>
+                <span th:text="${currentLocationName != null ? currentLocationName : 'Выберите кабинет'}">Выберите кабинет</span>
             </div>
             <table>
                 <thead>
                 <tr>
                     <th>Инв. №</th>
                     <th>Название</th>
+                    <th>Тип</th>
                     <th>Последняя инвентаризация</th>
                 </tr>
                 </thead>
                 <tbody>
                 <tr th:each="item : ${locationItems}">
-                    <td th:text="${item.inventoryNumber}">PC-0001</td>
+                    <td th:text="${item.inventoryNumber}">LO-00000001</td>
                     <td th:text="${item.name}">Станция</td>
+                    <td th:text="${item.type != null ? item.type.name : '-'}">Тип</td>
                     <td th:text="${item.lastInventoryScanAt != null ? #temporals.format(item.lastInventoryScanAt, 'dd.MM.yyyy HH:mm') : '—'}">—</td>
                 </tr>
-                <tr th:if="${#lists.isEmpty(locationItems)}">
-                    <td colspan="3" th:text="${selectedLocationId == null ? 'Выберите локацию' : 'Для этой локации нет активных устройств'}">—</td>
+                <tr th:if="${currentLocationName == null}">
+                    <td colspan="4">Выберите кабинет или склад выше.</td>
+                </tr>
+                <tr th:if="${currentLocationName != null and #lists.isEmpty(locationItems)}">
+                    <td colspan="4">На выбранной локации нет активной техники.</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="card" th:if="${activeSession != null and selectedBuildingId != null}">
+            <h3>Сканирование по коду</h3>
+            <p>
+                Сканируйте все найденные единицы. Если вещь числится в другом кабинете, она попадет в излишки, а система покажет ее учетное место.
+            </p>
+            <form th:action="@{/warehouse/inventory/scan}" method="post" class="inline" style="gap:12px;">
+                <input type="text" name="code" placeholder="LO-00000001" required autofocus>
+                <button type="submit">Сканировать</button>
+            </form>
+        </div>
+
+        <div class="grid two" th:if="${activeSession != null}">
+            <div class="card">
+                <h3>Просканировано на локации</h3>
+                <table>
+                    <thead>
+                    <tr>
+                        <th>Инв. №</th>
+                        <th>Название</th>
+                        <th>Время скана</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="scan : ${matchedScans}">
+                        <td th:text="${scan.inventoryNumber}">LO-00000001</td>
+                        <td th:text="${scan.equipmentName}">Станция</td>
+                        <td th:text="${#temporals.format(scan.scannedAt, 'dd.MM.yyyy HH:mm')}">01.01.2026</td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(matchedScans)}">
+                        <td colspan="3">Пока ничего не просканировано.</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="card">
+                <h3>Не просканировано</h3>
+                <table>
+                    <thead>
+                    <tr>
+                        <th>Инв. №</th>
+                        <th>Название</th>
+                        <th>Тип</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="item : ${missingItems}">
+                        <td th:text="${item.inventoryNumber}">LO-00000002</td>
+                        <td th:text="${item.name}">Монитор</td>
+                        <td th:text="${item.type != null ? item.type.name : '-'}">Тип</td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(missingItems)}">
+                        <td colspan="3">Все учетные единицы этой локации просканированы.</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card" th:if="${activeSession != null}">
+            <h3>Излишки</h3>
+            <p>Сюда попадают вещи, которые были найдены при инвентаризации, но по учету числятся в другом кабинете или складе.</p>
+            <table>
+                <thead>
+                <tr>
+                    <th>Инв. №</th>
+                    <th>Название</th>
+                    <th>Где числится по учету</th>
+                    <th>Время скана</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="scan : ${surplusScans}">
+                    <td th:text="${scan.inventoryNumber}">LO-00000001</td>
+                    <td th:text="${scan.equipmentName}">Ноутбук</td>
+                    <td th:text="${scan.equipment.location != null ? scan.equipment.location.name : 'Не указано'}">Кабинет 205</td>
+                    <td th:text="${#temporals.format(scan.scannedAt, 'dd.MM.yyyy HH:mm')}">01.01.2026</td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(surplusScans)}">
+                    <td colspan="4">Излишков нет.</td>
                 </tr>
                 </tbody>
             </table>
         </div>
 
         <div class="card">
-    <h3>История сессий</h3>
-    <table>
-        <thead>
-        <tr>
-            <th>#</th>
-            <th>Начато</th>
-            <th>Завершено</th>
-            <th>Кто начал</th>
-            <th>Кто завершил</th>
-            <th>Сканов</th>
-            <th>Отчет</th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr th:each="sess : ${recentSessions}">
-            <td th:text="${sess.id}">1</td>
-            <td th:text="${#temporals.format(sess.startedAt, 'dd.MM.yyyy HH:mm')}">01.01.2026</td>
-            <td th:text="${sess.finishedAt != null ? #temporals.format(sess.finishedAt, 'dd.MM.yyyy HH:mm') : '—'}">—</td>
-            <td th:text="${sess.startedBy}">it</td>
-            <td th:text="${sess.finishedBy != null ? sess.finishedBy : '—'}">—</td>
-            <td th:text="${sess.scannedCount}">0</td>
-            <td>
-                <a th:if="${sess.scannedCount > 0}"
-                   th:href="@{|/it/inventory/export/${sess.id}|}">Скачать</a>
-                <span th:if="${sess.scannedCount == 0}">—</span>
-            </td>
-        </tr>
-        <tr th:if="${#lists.isEmpty(recentSessions)}">
-            <td colspan="7">Сессий ещё не проводилось</td>
-        </tr>
-        </tbody>
-    </table>
+            <h3>История сессий</h3>
+            <table>
+                <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Начато</th>
+                    <th>Завершено</th>
+                    <th>Кто начал</th>
+                    <th>Кто завершил</th>
+                    <th>Сканов</th>
+                    <th>Отчет</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="sess : ${recentSessions}">
+                    <td th:text="${sess.id}">1</td>
+                    <td th:text="${#temporals.format(sess.startedAt, 'dd.MM.yyyy HH:mm')}">01.01.2026</td>
+                    <td th:text="${sess.finishedAt != null ? #temporals.format(sess.finishedAt, 'dd.MM.yyyy HH:mm') : '—'}">—</td>
+                    <td th:text="${sess.startedBy}">warehouse</td>
+                    <td th:text="${sess.finishedBy != null ? sess.finishedBy : '—'}">—</td>
+                    <td th:text="${sess.scannedCount}">0</td>
+                    <td>
+                        <a th:if="${sess.scannedCount > 0}" th:href="@{|/warehouse/inventory/export/${sess.id}|}">Скачать</a>
+                        <span th:if="${sess.scannedCount == 0}">—</span>
+                    </td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(recentSessions)}">
+                    <td colspan="7">Сессий еще не проводилось</td>
+                </tr>
+                </tbody>
+            </table>
         </div>
     </main>
 </div>
+<script>
+document.querySelectorAll('.location-picker').forEach((picker) => {
+    const toggle = picker.querySelector('.location-picker-toggle');
+    const filter = picker.querySelector('.location-filter');
+    const options = picker.querySelectorAll('.location-option');
+    const form = picker.closest('form');
+    const hiddenInput = form.querySelector('.selected-location-id');
+    const label = picker.querySelector('.selected-location-label');
+    const valueText = toggle.querySelector('strong');
+    const activeSession = document.body.dataset.activeSession === 'true';
+
+    toggle.addEventListener('click', () => {
+        picker.classList.toggle('open');
+        if (picker.classList.contains('open')) {
+            filter.focus();
+        }
+    });
+
+    filter.addEventListener('input', () => {
+        const query = filter.value.trim().toLowerCase();
+        options.forEach((option) => {
+            option.style.display = option.dataset.search.includes(query) ? '' : 'none';
+        });
+    });
+
+    options.forEach((option) => {
+        option.addEventListener('click', () => {
+            options.forEach((item) => item.classList.remove('selected'));
+            option.classList.add('selected');
+            hiddenInput.value = option.dataset.locationId;
+            valueText.textContent = option.dataset.locationLabel;
+            label.textContent = 'Выбрано: ' + option.dataset.locationLabel;
+            picker.classList.remove('open');
+
+            if (!activeSession && picker.classList.contains('inventory-location-picker')) {
+                const url = new URL(window.location.href);
+                url.searchParams.set('locationId', option.dataset.locationId);
+                window.location.href = url.toString();
+            }
+        });
+    });
+});
+</script>
 </body>
 </html>

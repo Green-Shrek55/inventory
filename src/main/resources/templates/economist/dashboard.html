@@ -10,10 +10,99 @@
     <h1>Финансовая аналитика оборудования</h1>
     <nav>
         <a th:href="@{/economist}">Главная</a>
+        <a href="#receipt-requests">Заявки на приемку</a>
         <a th:if="${isAdmin}" th:href="@{/admin}">Админка</a>
         <a th:href="@{/logout}">Выход</a>
     </nav>
 </header>
+
+<div th:if="${message}" class="flash" th:text="${message}">Сообщение</div>
+<div th:if="${error}" class="flash error" th:text="${error}">Ошибка</div>
+
+<section class="card" id="receipt-requests">
+    <h3>Заявка на приемку оборудования</h3>
+    <p>Экономист формирует заявку и указывает корпус поставки. В приемке складовщик увидит только заявки выбранного глобального корпуса.</p>
+    <form th:action="@{/economist/receipt-requests}" method="post">
+        <label>Название заявки
+            <input type="text" name="title" maxlength="255" placeholder="Например: Поставка ноутбуков для кафедры">
+        </label>
+        <label>Поставщик
+            <input type="text" name="supplier" maxlength="255" required placeholder="Например: ООО ТехПоставка">
+        </label>
+        <label>Корпус поставки
+            <select name="buildingId" required>
+                <option value="" disabled selected>Выберите корпус</option>
+                <option th:each="building : ${buildings}" th:value="${building.id}" th:text="${building.name}">Корпус</option>
+            </select>
+        </label>
+        <div id="receipt-lines" class="receipt-lines">
+        <div class="receipt-line">
+        <div class="grid two">
+            <label>Тип техники
+                <select name="typeIds" required>
+                    <option value="" disabled selected>Выберите тип</option>
+                    <option th:each="type : ${equipmentTypes}" th:value="${type.id}" th:text="${type.name}">Ноутбук</option>
+                </select>
+            </label>
+            <label>Название/модель
+                <input type="text" name="equipmentNames" maxlength="255" required placeholder="Например: Ноутбук Dell Latitude">
+            </label>
+        </div>
+        <div class="grid two">
+            <label>Количество
+                <input type="number" name="quantities" min="1" max="1000" value="1" required>
+            </label>
+            <label>Цена за единицу
+                <input type="number" name="prices" min="1" max="999999999" step="0.01" value="1" required>
+            </label>
+        </div>
+        <label>Дата закупки
+            <input type="date" name="purchaseDates" required>
+        </label>
+        <button type="button" class="ghost remove-receipt-line">Удалить позицию</button>
+        </div>
+        </div>
+        <button type="button" class="ghost" id="add-receipt-line">+ Добавить позицию</button>
+        <button type="submit">Сформировать и отправить на склад</button>
+    </form>
+
+    <table>
+        <thead>
+        <tr>
+            <th>#</th>
+            <th>DOCX</th>
+            <th>Заявка</th>
+            <th>Корпус</th>
+            <th>Поставщик</th>
+            <th>Статус</th>
+            <th>ШК / инвентарные номера</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="request : ${receiptRequests}">
+            <td th:text="${request.id}">1</td>
+            <td>
+                <a class="btn ghost"
+                   th:if="${request.status.name() == 'ACCEPTED' or request.status.name() == 'PARTIALLY_ACCEPTED' or request.status.name() == 'NOT_ACCEPTED'}"
+                   th:href="@{|/economist/receipt-requests/${request.id}/act.docx|}">DOCX</a>
+                <span th:if="${request.status.name() == 'SENT_TO_WAREHOUSE' or request.status.name() == 'IN_PROGRESS'}">—</span>
+            </td>
+            <td th:text="${request.title}">Заявка</td>
+            <td th:text="${request.building != null ? request.building.name : '-'}">Корпус</td>
+            <td th:text="${request.supplier}">Поставщик</td>
+            <td th:text="${request.status}">SENT_TO_WAREHOUSE</td>
+            <td>
+                <span th:each="item : ${request.items}"
+                      th:text="${item.expectedInventoryNumber + (item.accepted ? ' ✓' : '')}"
+                      class="barcode-pill">LO-00000001</span>
+            </td>
+        </tr>
+        <tr th:if="${#lists.isEmpty(receiptRequests)}">
+            <td colspan="7">Заявок пока нет</td>
+        </tr>
+        </tbody>
+    </table>
+</section>
 
 <div class="grid two">
     <div class="card">
@@ -44,7 +133,7 @@
             </thead>
             <tbody>
             <tr th:each="entry : ${valueByDepartment.entrySet()}">
-                <td th:text="${entry.key}">IT</td>
+                <td th:text="${entry.key}">Отдел</td>
                 <td th:text="${#numbers.formatDecimal(entry.value, 0, 'COMMA', 2, 'POINT')} + ' ₽'">0</td>
             </tr>
             </tbody>
@@ -84,7 +173,7 @@
             <tbody>
             <tr th:each="item : ${recentPurchases}">
                 <td th:text="${item.purchaseDate != null ? #temporals.format(item.purchaseDate, 'dd.MM.yyyy') : '-'}">01.02.2026</td>
-                <td th:text="${item.inventoryNumber}">PC-0001</td>
+                <td th:text="${item.inventoryNumber}">LO-00000001</td>
                 <td th:text="${item.name}">Станция</td>
                 <td th:text="${#numbers.formatDecimal(item.purchasePrice, 0, 'COMMA', 2, 'POINT')} + ' ₽'">0</td>
             </tr>
@@ -106,7 +195,7 @@
             </thead>
             <tbody>
             <tr th:each="item : ${mostExpensive}">
-                <td th:text="${item.inventoryNumber}">PC-0002</td>
+                <td th:text="${item.inventoryNumber}">LO-00000002</td>
                 <td th:text="${item.name}">Ноутбук</td>
                 <td th:text="${#numbers.formatDecimal(item.purchasePrice, 0, 'COMMA', 2, 'POINT')} + ' ₽'">0</td>
             </tr>
@@ -117,5 +206,50 @@
         </table>
     </div>
 </div>
+<script>
+(() => {
+    const container = document.getElementById('receipt-lines');
+    const addButton = document.getElementById('add-receipt-line');
+    if (!container || !addButton) {
+        return;
+    }
+
+    const updateRemoveButtons = () => {
+        const rows = container.querySelectorAll('.receipt-line');
+        rows.forEach((row) => {
+            const removeButton = row.querySelector('.remove-receipt-line');
+            if (removeButton) {
+                removeButton.style.display = rows.length > 1 ? '' : 'none';
+            }
+        });
+    };
+
+    addButton.addEventListener('click', () => {
+        const source = container.querySelector('.receipt-line');
+        const clone = source.cloneNode(true);
+        clone.querySelectorAll('input').forEach((input) => {
+            input.value = input.type === 'number' ? '1' : '';
+        });
+        clone.querySelectorAll('select').forEach((select) => {
+            select.selectedIndex = 0;
+        });
+        container.appendChild(clone);
+        updateRemoveButtons();
+    });
+
+    container.addEventListener('click', (event) => {
+        if (!event.target.classList.contains('remove-receipt-line')) {
+            return;
+        }
+        const rows = container.querySelectorAll('.receipt-line');
+        if (rows.length > 1) {
+            event.target.closest('.receipt-line').remove();
+            updateRemoveButtons();
+        }
+    });
+
+    updateRemoveButtons();
+})();
+</script>
 </body>
 </html>

@@ -11,10 +11,18 @@
     <main class="admin-main" data-remember-scroll>
         <header class="page-header">
             <div>
-                <h1>Управление оборудованием</h1>
+                <h1>Учет и размещение оборудования</h1>
             </div>
             <div class="page-header-actions">
-                <a class="btn" th:href="@{/it/equipment/new}">+ Добавить устройство</a>
+                <form th:action="@{/warehouse/context/building}" method="post" class="inline building-context-form">
+                    <select name="buildingId" onchange="this.form.submit()">
+                        <option value="">Все корпуса</option>
+                        <option th:each="building : ${buildings}"
+                                th:value="${building.id}"
+                                th:selected="${selectedBuildingId != null and building.id == selectedBuildingId}"
+                                th:text="${building.name}">Корпус</option>
+                    </select>
+                </form>
                 <a class="btn ghost" th:href="@{/logout}">Выход</a>
             </div>
         </header>
@@ -22,151 +30,383 @@
         <div th:if="${message}" class="flash" th:text="${message}">Сообщение</div>
         <div th:if="${error}" class="flash error" th:text="${error}">Ошибка</div>
 
-        <div class="card">
-            <div class="tabs">
-                <a href="#" class="active">В работе</a>
-                <a href="#warehouse">Склад</a>
-                <a href="#archive">Архив</a>
-                <a th:href="@{/it/equipment/new}">+ Добавить</a>
-            </div>
-            <table>
-        <thead>
-        <tr>
-            <th>Инв. №</th>
-            <th>Название</th>
-            <th>Тип</th>
-            <th>Местоположение</th>
-            <th>Ответственный</th>
-            <th>Стоимость</th>
-            <th>Действия</th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr th:each="item : ${activeEquipment}">
-            <td th:text="${item.inventoryNumber}">0001</td>
-            <td th:text="${item.name}">ПК</td>
-            <td th:text="${item.type != null ? item.type.name : '-'}">ПК</td>
-            <td th:text="${item.location != null ? item.location.name : '-'}">Каб. 1</td>
-            <td th:text="${item.assignedTo != null ? item.assignedTo.fullName : '-'}">Иванов</td>
-            <td th:text="${#numbers.formatDecimal(item.purchasePrice, 0, 'COMMA', 2, 'POINT')} + ' ₽'">0</td>
-            <td>
-                <a th:href="@{|/it/equipment/${item.id}/edit|}">Изменить</a>
-                <form th:action="@{|/it/equipment/${item.id}/placement|}" method="post" class="inline">
-                    <select name="locationId">
-                        <option th:each="location : ${locations}"
-                                th:value="${location.id}"
-                                th:text="${location.name}"
-                                th:selected="${item.location != null and location.id == item.location.id}">
-                        </option>
-                    </select>
-                    <select name="employeeId">
-                        <option value="">— Ответственный —</option>
-                        <option th:each="employee : ${employees}"
-                                th:value="${employee.id}"
-                                th:selected="${item.assignedTo != null and employee.id == item.assignedTo.id}"
-                                th:text="${employee.fullName + ' / ' + (employee.department != null ? employee.department.name : '-')}">
-                        </option>
-                    </select>
-                    <button type="submit">Переместить</button>
-                </form>
-                <form th:if="${warehouseLocationId != null}" th:action="@{|/it/equipment/${item.id}/placement|}" method="post" class="inline">
-                    <input type="hidden" name="locationId" th:value="${warehouseLocationId}">
-                    <button type="submit">На склад</button>
-                </form>
-                <form th:action="@{|/it/equipment/${item.id}/archive|}" method="post" class="inline">
-                    <button type="submit">В архив</button>
-                </form>
-                <form th:action="@{|/it/equipment/${item.id}/delete|}" method="post" class="inline"
-                      onsubmit="return confirm('Удалить устройство?');">
-                    <button type="submit" class="danger">Удалить</button>
-                </form>
-            </td>
-        </tr>
-        <tr th:if="${#lists.isEmpty(activeEquipment)}">
-            <td colspan="7">Пока нет записей</td>
-        </tr>
-        </tbody>
-            </table>
-        </div>
+        <div class="card equipment-tabs">
+            <div id="acceptance" class="tab-anchor"></div>
+            <div id="placement" class="tab-anchor"></div>
+            <div id="disposal" class="tab-anchor"></div>
 
-        <div class="card" id="warehouse">
-    <h3>Склад</h3>
-    <p>Доступно для сканирования через вкладку «Инвентаризация склада».</p>
+            <section class="tab-panel acceptance-panel">
+                <section class="process-section">
+                    <div>
+                        <h3>Приемка оборудования</h3>
+                        <p>Складовщик принимает оборудование по заявкам экономиста. Просканированные единицы после приемки попадают на выбранный склад.</p>
+                    </div>
+                    <a class="btn" th:href="@{/warehouse/equipment/new}">+ Внести вручную</a>
+                </section>
+
+                <h3>Заявки на приемку</h3>
+                <table>
+                    <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>DOCX</th>
+                        <th>Заявка</th>
+                        <th>Статус</th>
+                        <th>Ожидаемые ШК</th>
+                        <th>Сканирование</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:if="${selectedBuildingId == null}">
+                        <td colspan="6">Выберите корпус справа сверху, чтобы увидеть заявки на приемку.</td>
+                    </tr>
+                    <tr th:each="request : ${receiptRequests}">
+                        <td th:text="${request.id}">1</td>
+                        <td>
+                            <a class="btn ghost"
+                               th:if="${request.status.name() == 'ACCEPTED' or request.status.name() == 'PARTIALLY_ACCEPTED' or request.status.name() == 'NOT_ACCEPTED'}"
+                               th:href="@{|/warehouse/equipment/receipt-requests/${request.id}/act.docx|}">DOCX</a>
+                            <span th:if="${request.status.name() == 'SENT_TO_WAREHOUSE' or request.status.name() == 'IN_PROGRESS'}">—</span>
+                        </td>
+                        <td>
+                            <strong th:text="${request.title}">Заявка</strong>
+                            <div th:text="${request.supplier}">Поставщик</div>
+                        </td>
+                        <td th:text="${request.status}">SENT_TO_WAREHOUSE</td>
+                        <td>
+                            <span th:each="item : ${request.items}"
+                                  th:classappend="${item.accepted} ? ' accepted'"
+                                  th:text="${item.expectedInventoryNumber + (item.accepted ? ' ✓' : '')}"
+                                  class="barcode-pill">LO-00000001</span>
+                        </td>
+                        <td>
+                            <form th:if="${request.status.name() == 'SENT_TO_WAREHOUSE'}"
+                                  th:action="@{|/warehouse/equipment/receipt-requests/${request.id}/start|}" method="post" class="inline">
+                                <button type="submit">Начать приемку</button>
+                            </form>
+                            <form th:if="${request.status.name() == 'IN_PROGRESS'}"
+                                  th:action="@{|/warehouse/equipment/receipt-requests/${request.id}/scan|}" method="post" class="inline">
+                                <select name="warehouseId" disabled style="display:none;">
+                                    <option value="" disabled selected>Склад</option>
+                                    <option th:each="warehouse : ${warehouseLocations}"
+                                            th:value="${warehouse.id}"
+                                            th:text="${warehouse.displayName}">Склад</option>
+                                </select>
+                                <input type="text" name="code" placeholder="Скан ШК / инв. номер">
+                                <button type="submit">Принять</button>
+                            </form>
+                            <form th:if="${request.status.name() == 'IN_PROGRESS'}"
+                                  th:action="@{|/warehouse/equipment/receipt-requests/${request.id}/finish|}" method="post" class="inline">
+                                <button type="submit" class="danger">Завершить приемку</button>
+                            </form>
+                            <span th:if="${request.status.name() == 'ACCEPTED' or request.status.name() == 'PARTIALLY_ACCEPTED' or request.status.name() == 'NOT_ACCEPTED'}">Приемка завершена</span>
+                        </td>
+                    </tr>
+                    <tr th:if="${selectedBuildingId != null and #lists.isEmpty(receiptRequests)}">
+                        <td colspan="6">Нет заявок на приемку</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section class="tab-panel placement-panel active">
+                <section class="process-section placement-workspace">
+                    <div>
+                        <h3>Размещение по инвентарному номеру / ШК</h3>
+                        <p>Сканируйте штрихкод или введите инвентарный номер вручную. После поиска можно изменить кабинет или склад.</p>
+                        <div class="placement-mode-card" th:classappend="${bulkPlacementEnabled} ? ' bulk-enabled'">
+                            <div class="placement-mode-head">
+                                <div>
+                                    <strong th:text="${bulkPlacementEnabled ? 'Массовое размещение включено' : 'Разовое размещение'}">Режим</strong>
+                                    <p th:text="${bulkPlacementEnabled and fixedPlacementLocation != null ? 'Все следующие сканы автоматически назначаются в: ' + fixedPlacementLocation.name : 'Каждая найденная вещь размещается отдельно через карточку справа.'}">
+                                        Описание режима
+                                    </p>
+                                </div>
+                                <form th:action="@{/warehouse/context/placement-location}" method="post" class="bulk-mode-form">
+                                    <input type="hidden" name="enabled" value="false">
+                                    <label class="mode-switch" title="Массовое размещение">
+                                        <input type="checkbox" class="bulk-mode-toggle" th:checked="${bulkPlacementEnabled}">
+                                        <span class="mode-slider"></span>
+                                    </label>
+                                </form>
+                            </div>
+                            <div class="bulk-placement-config" th:classappend="${bulkPlacementEnabled} ? ' open'">
+                                <p class="bulk-hint">Выберите кабинет или склад для каскадного назначения. После этого все отсканированные вещи будут сразу попадать туда.</p>
+                                <form th:action="@{/warehouse/context/placement-location}" method="post" class="placement-save-form">
+                                    <input type="hidden" name="enabled" value="true">
+                                    <input type="hidden" name="locationId" class="selected-location-id" th:value="${fixedPlacementLocationId}">
+                                    <div class="location-picker">
+                                        <button type="button" class="current-location-button location-picker-toggle">
+                                            <span>Общее место размещения</span>
+                                            <strong th:text="${fixedPlacementLocation != null ? fixedPlacementLocation.name : 'Выбрать кабинет или склад'}">Выбрать кабинет</strong>
+                                        </button>
+                                        <div class="location-picker-panel">
+                                            <input type="text" class="location-filter" placeholder="Введите часть номера кабинета, например 205">
+                                            <div class="location-options">
+                                                <button type="button"
+                                                        th:each="location : ${locations}"
+                                                        class="location-option"
+                                                        th:classappend="${fixedPlacementLocationId != null and location.id == fixedPlacementLocationId} ? ' selected'"
+                                                        th:data-location-id="${location.id}"
+                                                        th:data-location-label="${location.name}"
+                                                        th:data-search="${location.name.toLowerCase()}"
+                                                        th:text="${location.name}">Кабинет</button>
+                                            </div>
+                                        </div>
+                                        <p class="selected-location-label"
+                                           th:text="${fixedPlacementLocation != null ? 'Выбрано: ' + fixedPlacementLocation.name : 'Место для массового размещения не выбрано'}">
+                                            Место не выбрано
+                                        </p>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                        <form th:action="@{/warehouse/equipment}" method="get" class="placement-scan-form">
+                            <input type="text" name="placementCode" th:value="${placementCode}" placeholder="Например: LO-00000002">
+                            <button type="submit">Найти</button>
+                        </form>
+                        <div th:if="${placementAutoApplied}" class="flash" style="margin-top:12px;">
+                            Вещь автоматически размещена в выбранное общее место.
+                        </div>
+                    </div>
+
+                    <div class="placement-card" th:if="${placementItem != null}">
+                        <span class="placement-kicker">Найдено</span>
+                        <h3 th:text="${placementItem.inventoryNumber + ' · ' + placementItem.name}">LO-00000002 · Ноутбук</h3>
+                        <form th:action="@{/warehouse/equipment/placement}" method="post" class="placement-save-form">
+                            <input type="hidden" name="inventoryNumber" th:value="${placementItem.inventoryNumber}">
+                            <input type="hidden" name="locationId" class="selected-location-id">
+                            <div class="location-picker">
+                                <button type="button" class="current-location-button location-picker-toggle">
+                                    <span>Текущее размещение</span>
+                                    <strong th:text="${placementItem.location != null ? placementItem.location.name : 'Не указано'}">Кабинет</strong>
+                                </button>
+                                <div class="location-picker-panel">
+                                    <input type="text" class="location-filter" placeholder="Введите часть номера кабинета, например 205">
+                                    <div class="location-options">
+                                        <button type="button"
+                                                th:each="location : ${locations}"
+                                                class="location-option"
+                                                th:classappend="${placementItem.location != null and location.id == placementItem.location.id} ? ' selected'"
+                                                th:data-location-id="${location.id}"
+                                                th:data-location-label="${location.name}"
+                                                th:data-search="${location.name.toLowerCase()}"
+                                                th:text="${location.name}">Кабинет</button>
+                                    </div>
+                                </div>
+                                <p class="selected-location-label"
+                                   th:text="${placementItem.location != null ? 'Текущее место: ' + placementItem.location.name : 'Место не выбрано'}">
+                                    Место не выбрано
+                                </p>
+                            </div>
+                        </form>
+                    </div>
+
+                <div class="placement-card muted-card" th:if="${placementCode != null and !#strings.isEmpty(placementCode) and placementItem == null}">
+                    <span class="placement-kicker">Не найдено</span>
+                    <h3 th:text="'Инвентарный номер: ' + ${placementCode}">Инвентарный номер</h3>
+                    <p th:if="${placementOutOfBuilding}">Оборудование числится в другом корпусе. Переключите корпус справа сверху, чтобы работать с ним.</p>
+                    <p th:if="${!placementOutOfBuilding}">Проверьте номер или сначала примите оборудование в систему.</p>
+                </div>
+                </section>
+            </section>
+
+            <section class="tab-panel disposal-panel">
+                <section class="process-section">
+                    <div>
+                        <h3>Утилизационная сессия</h3>
+                        <p>Сначала начните сессию, затем сканируйте технику из списка на утилизацию. Для завершения обязательно введите или просканируйте номер пломбы.</p>
+                    </div>
+                    <form th:if="${activeDisposalSession == null}" th:action="@{/warehouse/equipment/disposal/start}" method="post" class="inline">
+                        <button type="submit">Начать сессию</button>
+                    </form>
+                </section>
+
+                <p th:if="${selectedBuildingId == null}" class="flash error">Выберите корпус справа сверху, чтобы начать утилизацию.</p>
+
+                <div th:if="${activeDisposalSession != null}" class="placement-mode-card bulk-enabled">
+                    <div class="placement-mode-head">
+                        <div>
+                            <strong th:text="'Активная сессия № ' + ${activeDisposalSession.id}">Активная сессия</strong>
+                            <p>Отсканировано: <strong th:text="${activeDisposalSession.scannedCount}">0</strong></p>
+                        </div>
+                    </div>
+                    <form th:action="@{/warehouse/equipment/disposal/scan}" method="post" class="placement-scan-form">
+                        <input type="text" name="code" placeholder="LO-00000006" required autofocus>
+                        <button type="submit">Сканировать</button>
+                    </form>
+                    <form th:action="@{/warehouse/equipment/disposal/finish}" method="post" class="placement-scan-form">
+                        <input type="text" name="sealNumber" placeholder="Номер пломбы" required>
+                        <button type="submit" class="danger">Завершить и сформировать акт</button>
+                    </form>
+                </div>
+
+                <h3>Отсканировано в текущей сессии</h3>
+                <table>
+                    <thead>
+                    <tr>
+                        <th>Инв. №</th>
+                        <th>Название</th>
+                        <th>Тип</th>
+                        <th>Место</th>
+                        <th>Дата скана</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="scan : ${activeDisposalScans}">
+                        <td th:text="${scan.inventoryNumber}">LO-00000006</td>
+                        <td th:text="${scan.equipmentName}">ПК</td>
+                        <td th:text="${scan.typeName}">Тип</td>
+                        <td th:text="${scan.locationName}">Кабинет</td>
+                        <td th:text="${#temporals.format(scan.scannedAt, 'dd.MM.yyyy HH:mm')}">01.01.2026</td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(activeDisposalScans)}">
+                        <td colspan="5">Пока ничего не отсканировано</td>
+                    </tr>
+                    </tbody>
+                </table>
+
+                <h3>История утилизации</h3>
+                <table>
+                    <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Корпус</th>
+                        <th>Начато</th>
+                        <th>Завершено</th>
+                        <th>Пломба</th>
+                        <th>Сканов</th>
+                        <th>Акт</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="sess : ${disposalSessions}">
+                        <td th:text="${sess.id}">1</td>
+                        <td th:text="${sess.building != null ? sess.building.name : '-'}">Корпус</td>
+                        <td th:text="${#temporals.format(sess.startedAt, 'dd.MM.yyyy HH:mm')}">01.01.2026</td>
+                        <td th:text="${sess.finishedAt != null ? #temporals.format(sess.finishedAt, 'dd.MM.yyyy HH:mm') : '-'}">-</td>
+                        <td th:text="${sess.sealNumber != null ? sess.sealNumber : '-'}">Пломба</td>
+                        <td th:text="${sess.scannedCount}">0</td>
+                        <td>
+                            <a th:if="${sess.status.name() == 'COMPLETED'}" th:href="@{|/warehouse/equipment/disposal/export/${sess.id}|}">DOCX</a>
+                            <span th:if="${sess.status.name() != 'COMPLETED'}">—</span>
+                        </td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(disposalSessions)}">
+                        <td colspan="7">Сессий утилизации пока нет</td>
+                    </tr>
+                    </tbody>
+                </table>
+
+    <h3>Кандидаты на утилизацию по сроку эксплуатации</h3>
+    <p th:if="${!#lists.isEmpty(disposalDueEquipment)}" class="utilization-warning">✓ Есть техника, требующая утилизации.</p>
     <table>
         <thead>
         <tr>
             <th>Инв. №</th>
             <th>Название</th>
-            <th>Последняя инвентаризация</th>
-            <th>Действия</th>
+            <th>Место</th>
+            <th>Дата покупки</th>
         </tr>
         </thead>
         <tbody>
-        <tr th:each="item : ${warehouseEquipment}">
+        <tr th:each="item : ${disposalDueEquipment}">
             <td th:text="${item.inventoryNumber}">0001</td>
             <td th:text="${item.name}">ПК</td>
-            <td th:text="${item.lastInventoryScanAt != null ? #temporals.format(item.lastInventoryScanAt, 'dd.MM.yyyy HH:mm') : '—'}">—</td>
-            <td>
-                <form th:action="@{|/it/equipment/${item.id}/placement|}" method="post" class="inline">
-                    <select name="locationId">
-                        <option th:each="location : ${locations}"
-                                th:value="${location.id}"
-                                th:text="${location.name}">
-                        </option>
-                    </select>
-                    <select name="employeeId">
-                        <option value="">— Ответственный —</option>
-                        <option th:each="employee : ${employees}"
-                                th:value="${employee.id}"
-                                th:text="${employee.fullName}">
-                        </option>
-                    </select>
-                    <button type="submit">Выдать</button>
-                </form>
-                <a th:href="@{|/it/equipment/${item.id}/edit|}">Редактировать</a>
-            </td>
+            <td th:text="${item.location != null ? item.location.name : '-'}">Кабинет</td>
+            <td th:text="${item.purchaseDate != null ? #temporals.format(item.purchaseDate, 'dd.MM.yyyy') : '-'}">16.02</td>
         </tr>
-        <tr th:if="${#lists.isEmpty(warehouseEquipment)}">
-            <td colspan="4">Склад пуст</td>
+        <tr th:if="${#lists.isEmpty(disposalDueEquipment)}">
+            <td colspan="4">Нет техники с истекшим сроком эксплуатации</td>
         </tr>
         </tbody>
     </table>
-        </div>
-
-        <div class="card" id="archive">
-    <h3>Архив</h3>
-    <table>
-        <thead>
-        <tr>
-            <th>Инв. №</th>
-            <th>Название</th>
-            <th>Стоимость</th>
-            <th>Дата архивации</th>
-            <th>Действия</th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr th:each="item : ${archivedEquipment}">
-            <td th:text="${item.inventoryNumber}">0001</td>
-            <td th:text="${item.name}">ПК</td>
-            <td th:text="${#numbers.formatDecimal(item.purchasePrice, 0, 'COMMA', 2, 'POINT')} + ' ₽'">0</td>
-            <td th:text="${item.archivedAt != null ? #temporals.format(item.archivedAt, 'dd.MM.yyyy HH:mm') : '-'}">16.02</td>
-            <td>
-                <form th:action="@{|/it/equipment/${item.id}/unarchive|}" method="post" class="inline">
-                    <button type="submit">Восстановить</button>
-                </form>
-                <form th:action="@{|/it/equipment/${item.id}/delete|}" method="post" class="inline"
-                      onsubmit="return confirm('Удалить запись навсегда?');">
-                    <button type="submit" class="danger">Удалить</button>
-                </form>
-            </td>
-        </tr>
-        <tr th:if="${#lists.isEmpty(archivedEquipment)}">
-            <td colspan="5">Архив пуст</td>
-        </tr>
-        </tbody>
+            </section>
         </div>
     </main>
 </div>
+<script>
+(() => {
+    const tabs = document.querySelector('.equipment-tabs');
+    if (!tabs) {
+        return;
+    }
+
+    const panels = {
+        acceptance: tabs.querySelector('.acceptance-panel'),
+        placement: tabs.querySelector('.placement-panel'),
+        disposal: tabs.querySelector('.disposal-panel')
+    };
+
+    const showPanel = () => {
+        const section = panels[window.location.hash.replace('#', '')]
+            ? window.location.hash.replace('#', '')
+            : 'placement';
+
+        Object.entries(panels).forEach(([key, panel]) => {
+            if (panel) {
+                panel.classList.toggle('active', key === section);
+            }
+        });
+    };
+
+    showPanel();
+    window.addEventListener('hashchange', showPanel);
+})();
+
+document.querySelectorAll('.location-picker').forEach((picker) => {
+    const toggle = picker.querySelector('.location-picker-toggle');
+    const filter = picker.querySelector('.location-filter');
+    const options = picker.querySelectorAll('.location-option');
+    const form = picker.closest('form');
+    const hiddenInput = form.querySelector('.selected-location-id');
+    const label = picker.querySelector('.selected-location-label');
+
+    toggle.addEventListener('click', () => {
+        picker.classList.toggle('open');
+        if (picker.classList.contains('open')) {
+            filter.focus();
+        }
+    });
+
+    filter.addEventListener('input', () => {
+        const query = filter.value.trim().toLowerCase();
+        options.forEach((option) => {
+            option.style.display = option.dataset.search.includes(query) ? '' : 'none';
+        });
+    });
+
+    options.forEach((option) => {
+        option.addEventListener('click', () => {
+            options.forEach((item) => item.classList.remove('selected'));
+            option.classList.add('selected');
+            hiddenInput.value = option.dataset.locationId;
+            label.textContent = 'Выбрано: ' + option.dataset.locationLabel;
+            picker.classList.remove('open');
+            form.submit();
+        });
+    });
+});
+
+document.querySelectorAll('.bulk-mode-toggle').forEach((toggle) => {
+    const form = toggle.closest('form');
+    const modeCard = toggle.closest('.placement-mode-card');
+    const config = modeCard.querySelector('.bulk-placement-config');
+
+    toggle.addEventListener('change', () => {
+        if (toggle.checked) {
+            modeCard.classList.add('bulk-enabled');
+            config.classList.add('open');
+            const filter = config.querySelector('.location-filter');
+            if (filter) {
+                filter.focus();
+            }
+            return;
+        }
+
+        form.submit();
+    });
+});
+</script>
 </body>
 </html>

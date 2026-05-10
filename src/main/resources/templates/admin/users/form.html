@@ -2,7 +2,7 @@
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title th:text="${editMode} ? 'Edit user' : 'Create user'">User</title>
+    <title th:text="${editMode} ? 'Редактирование пользователя' : 'Создание пользователя'">Пользователь</title>
     <link rel="stylesheet" th:href="@{/css/app.css}">
 </head>
 <body>
@@ -11,11 +11,11 @@
     <main class="admin-main" data-remember-scroll>
         <header class="page-header">
             <div>
-                <h1 th:text="${editMode} ? 'Edit user' : 'Create user'">Form</h1>
+                <h1 th:text="${editMode} ? 'Редактирование пользователя' : 'Создание пользователя'">Форма</h1>
             </div>
             <div class="page-header-actions">
-                <a class="btn" th:href="@{/admin/users}">Back</a>
-                <a class="btn ghost" th:href="@{/logout}">Logout</a>
+                <a class="btn" th:href="@{/admin/users}">Назад</a>
+                <a class="btn ghost" th:href="@{/logout}">Выход</a>
             </div>
         </header>
 
@@ -26,7 +26,7 @@
                 <div th:if="${#fields.hasGlobalErrors()}" class="flash error" style="margin-top:0;">
                     <p th:each="err : ${#fields.globalErrors()}" th:text="${err}">Error</p>
                 </div>
-                <label>Username
+                <label>Логин
                     <input type="text" th:field="*{username}" th:readonly="${editMode}">
                 </label>
                 <div th:if="${#fields.hasErrors('username')}" class="flash error" th:errors="*{username}">Error</div>
@@ -37,51 +37,42 @@
                 <div th:if="${#fields.hasErrors('email')}" class="flash error" th:errors="*{email}">Error</div>
 
                 <div th:if="${!editMode}">
-                    <label>Password
+                    <label>Пароль
                         <input type="password" th:field="*{password}">
                     </label>
                     <div th:if="${#fields.hasErrors('password')}" class="flash error" th:errors="*{password}">Error</div>
                 </div>
 
-                <label>Role
+                <label>Роль
                     <select th:field="*{role}">
-                        <option value="" disabled selected>Select role</option>
+                        <option value="" disabled selected>Выберите роль</option>
                         <option th:each="role : ${roles}"
                                 th:value="${role}"
-                                th:text="${role}">ADMIN</option>
+                                th:text="${role.name() == 'ADMIN' ? 'Администратор' : (role.name() == 'WAREHOUSE' ? 'Материально ответственное лицо' : (role.name() == 'ECONOMIST' ? 'Экономист' : 'Руководитель'))}">ADMIN</option>
                     </select>
                 </label>
                 <div th:if="${#fields.hasErrors('role')}" class="flash error" th:errors="*{role}">Error</div>
 
-                <label>Department
-                    <select th:field="*{departmentId}">
-                        <option value="">-</option>
-                        <option th:each="dept : ${allDepartments}"
-                                th:value="${dept.id}"
-                                th:text="${dept.name}">IT</option>
-                    </select>
-                </label>
-
                 <label>
                     <input type="checkbox" th:field="*{enabled}">
-                    Enabled
+                    Пользователь активен
                 </label>
 
                 <button type="submit" style="margin-top:16px;"
-                        th:text="${editMode} ? 'Save' : 'Create'">Save</button>
+                        th:text="${editMode} ? 'Сохранить' : 'Создать'">Сохранить</button>
             </form>
         </div>
 
         <div class="card" th:if="${editMode}">
-            <h3>Reset password</h3>
+            <h3>Сброс пароля</h3>
             <form th:action="@{'/admin/users/' + ${user.id} + '/password'}"
                   th:object="${passwordForm}"
                   method="post">
-                <label>New password
+                <label>Новый пароль
                     <input type="password" th:field="*{password}">
                 </label>
                 <div th:if="${#fields.hasErrors('password')}" class="flash error" th:errors="*{password}">Error</div>
-                <button type="submit" style="margin-top:12px;">Update password</button>
+                <button type="submit" style="margin-top:12px;">Обновить пароль</button>
             </form>
         </div>
     </main>

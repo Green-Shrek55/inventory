@@ -12,5 +12,9 @@ public interface InventorySessionRepository extends JpaRepository<InventorySessi
 
     boolean existsByStatus(InventorySessionStatus status);
 
+    boolean existsByLocation_IdAndStatus(Long locationId, InventorySessionStatus status);
+
+    List<InventorySession> findByLocation_Id(Long locationId);
+
     List<InventorySession> findTop10ByOrderByStartedAtDesc();
 }

@@ -29,7 +29,7 @@ public class InventorySession {
     private int scannedCount = 0;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "location_id", nullable = false)
+    @JoinColumn(name = "location_id")
     private Location location;
 
     public Long getId() {

@@ -36,10 +36,10 @@ public class HomeController {
                 .collect(Collectors.toList()));
         model.addAttribute("recentEquipment", latestItems);
         boolean admin = hasRole(auth, "ROLE_ADMIN");
-        boolean it = hasRole(auth, "ROLE_IT");
+        boolean warehouse = hasRole(auth, "ROLE_WAREHOUSE");
         boolean economist = hasRole(auth, "ROLE_ECONOMIST");
         model.addAttribute("isAdmin", admin);
-        model.addAttribute("isIt", it);
+        model.addAttribute("isWarehouse", warehouse);
         model.addAttribute("isEconomist", economist);
         if (admin) {
             model.addAttribute("recentLogs", actionLogService.latest(5));

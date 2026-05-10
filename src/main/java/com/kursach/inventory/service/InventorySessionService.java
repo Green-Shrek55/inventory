@@ -88,13 +88,6 @@ public class InventorySessionService {
         if (sessionLocation == null) {
             throw new IllegalStateException("Для сессии не указана локация");
         }
-        Location itemLocation = item.getLocation();
-        if (itemLocation == null || itemLocation.getId() == null
-                || !itemLocation.getId().equals(sessionLocation.getId())) {
-            String itemLocName = itemLocation != null ? itemLocation.getName() : "не определено";
-            throw new IllegalStateException("Текущая сессия проходит в "
-                    + sessionLocation.getName() + ", а оборудование находится в " + itemLocName);
-        }
         session.incrementScans();
         repository.save(session);
 

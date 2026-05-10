@@ -2,7 +2,7 @@
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Admin - Users</title>
+    <title>Админ · Пользователи</title>
     <link rel="stylesheet" th:href="@{/css/app.css}">
 </head>
 <body>
@@ -11,11 +11,11 @@
     <main class="admin-main" data-remember-scroll>
         <header class="page-header">
             <div>
-                <h1>User management</h1>
+                <h1>Пользователи</h1>
             </div>
             <div class="page-header-actions">
-                <a class="btn" th:href="@{/admin/users/new}">+ Create</a>
-                <a class="btn ghost" th:href="@{/logout}">Logout</a>
+                <a class="btn" th:href="@{/admin/users/new}">+ Создать</a>
+                <a class="btn ghost" th:href="@{/logout}">Выход</a>
             </div>
         </header>
 
@@ -26,31 +26,29 @@
             <table>
                 <thead>
                 <tr>
-                    <th>Username</th>
+                    <th>Логин</th>
                     <th>Email</th>
-                    <th>Role</th>
-                    <th>Department</th>
-                    <th>Status</th>
-                    <th>Actions</th>
+                    <th>Роль</th>
+                    <th>Статус</th>
+                    <th>Действия</th>
                 </tr>
                 </thead>
                 <tbody>
                 <tr th:each="user : ${users}">
                     <td th:text="${user.username}">admin</td>
                     <td th:text="${user.email}">admin@example.com</td>
-                    <td th:text="${user.role}">ADMIN</td>
-                    <td th:text="${user.department != null ? user.department.name : '-'}">IT</td>
-                    <td th:text="${user.enabled ? 'Enabled' : 'Disabled'}">Enabled</td>
+                    <td th:text="${user.role.name() == 'ADMIN' ? 'Администратор' : (user.role.name() == 'WAREHOUSE' ? 'Материально ответственное лицо' : (user.role.name() == 'ECONOMIST' ? 'Экономист' : 'Руководитель'))}">ADMIN</td>
+                    <td th:text="${user.enabled ? 'Активен' : 'Отключен'}">Активен</td>
                     <td>
-                        <a th:href="@{|/admin/users/${user.id}/edit|}">Edit</a>
+                        <a th:href="@{|/admin/users/${user.id}/edit|}">Изменить</a>
                         <form th:action="@{|/admin/users/${user.id}/delete|}" method="post" class="inline"
-                              onsubmit="return confirm('Delete user?');">
-                            <button type="submit" class="danger">Delete</button>
+                              onsubmit="return confirm('Удалить пользователя?');">
+                            <button type="submit" class="danger">Удалить</button>
                         </form>
                     </td>
                 </tr>
                 <tr th:if="${#lists.isEmpty(users)}">
-                    <td colspan="6">No users found</td>
+                    <td colspan="5">Пользователей нет</td>
                 </tr>
                 </tbody>
             </table>

@@ -1,29 +1,28 @@
 ﻿server:
-  port: ${PORT:9091}
+  port: ${PORT:9092}
 
 spring:
   datasource:
-    url: jdbc:h2:mem:inventorydb;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-    driverClassName: org.h2.Driver
-    username: sa
-    password:
+    url: ${SPRING_DATASOURCE_URL:jdbc:h2:mem:inventorydb;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE}
+    username: ${SPRING_DATASOURCE_USERNAME:sa}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
     properties:
       hibernate:
         format_sql: true
   h2:
     console:
-      enabled: true
+      enabled: ${H2_CONSOLE_ENABLED:true}
       path: /h2-console
   thymeleaf:
     cache: false
   mail:
-    host: smtp.gmail.com
-    port: 587
-    username: elan87767@gmail.com
-    password: ${MAIL_PASSWORD:}
+    host: ${SPRING_MAIL_HOST:smtp.gmail.com}
+    port: ${SPRING_MAIL_PORT:587}
+    username: ${SPRING_MAIL_USERNAME:}
+    password: ${SPRING_MAIL_PASSWORD:}
     properties:
       mail:
         smtp:
@@ -34,6 +33,7 @@ spring:
 app:
   security:
     two-factor:
+      enabled: false
       code-length: 6
       expiration-minutes: 10
     login-protection:
@@ -46,4 +46,3 @@ app:
 logging:
   level:
     org.hibernate.SQL: warn
-

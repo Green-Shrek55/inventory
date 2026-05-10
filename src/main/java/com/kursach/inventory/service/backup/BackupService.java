@@ -17,25 +17,28 @@ import java.util.zip.ZipOutputStream;
 @Service
 public class BackupService {
     private final UserRepository userRepository;
+    private final BuildingRepository buildingRepository;
+    private final LocationRepository locationRepository;
     private final DepartmentRepository departmentRepository;
     private final EmployeeRepository employeeRepository;
     private final EquipmentItemRepository equipmentItemRepository;
-    private final MaintenanceTicketRepository maintenanceTicketRepository;
     private final ActionLogRepository actionLogRepository;
 
     private final ObjectMapper om = new ObjectMapper();
 
     public BackupService(UserRepository userRepository,
+                         BuildingRepository buildingRepository,
+                         LocationRepository locationRepository,
                          DepartmentRepository departmentRepository,
                          EmployeeRepository employeeRepository,
                          EquipmentItemRepository equipmentItemRepository,
-                         MaintenanceTicketRepository maintenanceTicketRepository,
                          ActionLogRepository actionLogRepository) {
         this.userRepository = userRepository;
+        this.buildingRepository = buildingRepository;
+        this.locationRepository = locationRepository;
         this.departmentRepository = departmentRepository;
         this.employeeRepository = employeeRepository;
         this.equipmentItemRepository = equipmentItemRepository;
-        this.maintenanceTicketRepository = maintenanceTicketRepository;
         this.actionLogRepository = actionLogRepository;
     }
 
@@ -44,10 +47,11 @@ public class BackupService {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             try (ZipOutputStream zos = new ZipOutputStream(baos, StandardCharsets.UTF_8)) {
                 writeJson(zos, "users.json", userRepository.findAll());
+                writeJson(zos, "buildings.json", buildingRepository.findAll());
+                writeJson(zos, "locations.json", locationRepository.findAll());
                 writeJson(zos, "departments.json", departmentRepository.findAll());
                 writeJson(zos, "employees.json", employeeRepository.findAll());
                 writeJson(zos, "equipment_items.json", equipmentItemRepository.findAll());
-                writeJson(zos, "maintenance_tickets.json", maintenanceTicketRepository.findAll());
                 writeJson(zos, "logs.json", actionLogRepository.findAll());
                 writeJson(zos, "meta.json", Map.of("format", 1));
             }

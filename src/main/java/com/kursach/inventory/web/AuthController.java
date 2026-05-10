@@ -13,6 +13,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.util.StringUtils;
@@ -33,17 +34,20 @@ public class AuthController {
     private final TwoFactorAuthService twoFactorAuthService;
     private final LoginProtectionService loginProtectionService;
     private final UserService userService;
+    private final boolean twoFactorEnabled;
 
     public AuthController(UserRepository userRepository,
                           PasswordEncoder passwordEncoder,
                           TwoFactorAuthService twoFactorAuthService,
                           LoginProtectionService loginProtectionService,
-                          UserService userService) {
+                          UserService userService,
+                          @Value("${app.security.two-factor.enabled:true}") boolean twoFactorEnabled) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.twoFactorAuthService = twoFactorAuthService;
         this.loginProtectionService = loginProtectionService;
         this.userService = userService;
+        this.twoFactorEnabled = twoFactorEnabled;
     }
 
     @GetMapping("/login")
@@ -100,6 +104,11 @@ public class AuthController {
             throw new DisabledException("User disabled");
         }
 
+        if (!twoFactorEnabled) {
+            authenticate(user, request.getSession(true));
+            return "redirect:/post-login";
+        }
+
         try {
             twoFactorAuthService.beginChallenge(user);
         } catch (IllegalStateException ex) {
@@ -141,17 +150,8 @@ public class AuthController {
             return "redirect:/login/verify";
         }
 
-        SecurityContext context = SecurityContextHolder.createEmptyContext();
-        UsernamePasswordAuthenticationToken authentication =
-                new UsernamePasswordAuthenticationToken(
-                        user.getUsername(),
-                        null,
-                        List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()))
-                );
-        context.setAuthentication(authentication);
-        SecurityContextHolder.setContext(context);
         session.removeAttribute(TWO_FACTOR_USER_ID);
-        session.setAttribute("SPRING_SECURITY_CONTEXT", context);
+        authenticate(user, session);
 
         return "redirect:/post-login";
     }
@@ -184,6 +184,19 @@ public class AuthController {
             return null;
         }
         return userRepository.findById(id).orElse(null);
+    }
+
+    private void authenticate(AppUser user, HttpSession session) {
+        SecurityContext context = SecurityContextHolder.createEmptyContext();
+        UsernamePasswordAuthenticationToken authentication =
+                new UsernamePasswordAuthenticationToken(
+                        user.getUsername(),
+                        null,
+                        List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()))
+                );
+        context.setAuthentication(authentication);
+        SecurityContextHolder.setContext(context);
+        session.setAttribute("SPRING_SECURITY_CONTEXT", context);
     }
 
     private void notifyAboutFailedPasswordAttempt(AppUser user, HttpServletRequest request) {

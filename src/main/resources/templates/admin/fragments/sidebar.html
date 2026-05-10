@@ -8,7 +8,12 @@
     <div class="sidebar-title">Администрирование</div>
     <a th:href="@{/admin}" th:classappend="${active == 'logs'} ? ' active'">Журнал действий</a>
     <a th:href="@{/admin/users}" th:classappend="${active == 'users'} ? ' active'">Пользователи</a>
-    <a th:href="@{/admin/directories}" th:classappend="${active == 'directories'} ? ' active'">Оргструктура</a>
+    <a th:href="@{/admin/directories}" th:classappend="${active == 'directories'} ? ' active'">Справочники учета</a>
+    <div class="sidebar-subnav" th:if="${active == 'directories'}">
+        <a th:href="@{/admin/directories#buildings}">Корпуса</a>
+        <a th:href="@{/admin/directories#locations}">Кабинеты и склады</a>
+        <a th:href="@{/admin/directories#types}">Типы техники</a>
+    </div>
 </nav>
 </body>
 </html>

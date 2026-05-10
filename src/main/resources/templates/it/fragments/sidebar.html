@@ -1,12 +1,42 @@
 <!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <body>
-<nav class="admin-sidebar" th:fragment="sidebar(active)">
-    <div class="sidebar-title">IT панель</div>
-    <a th:href="@{/it}" th:classappend="${active == 'dashboard'} ? ' active'">Обзор</a>
-    <a th:href="@{/it/equipment}" th:classappend="${active == 'equipment'} ? ' active'">Устройства</a>
-    <a th:href="@{/it/inventory}" th:classappend="${active == 'inventory'} ? ' active'">Инвентаризация</a>
-    <a th:href="@{/it/maintenance/new}" th:classappend="${active == 'maintenance'} ? ' active'">Новая заявка</a>
+<nav class="admin-sidebar warehouse-sidebar" th:fragment="sidebar(active)">
+    <div class="sidebar-title">Учет техники</div>
+    <a th:href="@{/warehouse}" data-nav-section="dashboard" th:classappend="${active == 'dashboard'} ? ' active'">Обзор</a>
+    <a th:href="@{/warehouse/equipment#acceptance}" data-nav-section="acceptance">Приемка</a>
+    <a th:href="@{/warehouse/equipment#placement}" data-nav-section="placement">Размещение</a>
+    <a th:href="@{/warehouse/inventory}" data-nav-section="inventory" th:classappend="${active == 'inventory'} ? ' active'">Инвентаризация</a>
+    <a th:href="@{/warehouse/equipment#disposal}" data-nav-section="disposal">Утилизация</a>
 </nav>
+<script>
+(() => {
+    const sidebar = document.querySelector('.warehouse-sidebar');
+    if (!sidebar) {
+        return;
+    }
+
+    const setActiveSection = () => {
+        const path = window.location.pathname;
+        const hash = window.location.hash.replace('#', '');
+        let section = null;
+
+        if (path.endsWith('/warehouse')) {
+            section = 'dashboard';
+        } else if (path.includes('/warehouse/inventory')) {
+            section = 'inventory';
+        } else if (path.includes('/warehouse/equipment')) {
+            section = hash === 'disposal' || hash === 'acceptance' ? hash : 'placement';
+        }
+
+        sidebar.querySelectorAll('[data-nav-section]').forEach((link) => {
+            link.classList.toggle('active', link.dataset.navSection === section);
+        });
+    };
+
+    setActiveSection();
+    window.addEventListener('hashchange', setActiveSection);
+})();
+</script>
 </body>
 </html>

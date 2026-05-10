@@ -17,8 +17,8 @@ public class PostLoginController {
         if (isAdmin) {
             return "redirect:/admin";
         }
-        if (hasRole(authentication, "ROLE_IT")) {
-            return "redirect:/it";
+        if (hasRole(authentication, "ROLE_WAREHOUSE")) {
+            return "redirect:/warehouse";
         }
         if (hasRole(authentication, "ROLE_ECONOMIST")) {
             return "redirect:/economist";
