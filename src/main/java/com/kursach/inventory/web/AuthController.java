@@ -53,7 +53,10 @@ public class AuthController {
     @GetMapping("/login")
     public String login(HttpSession session) {
         if (session.getAttribute(TWO_FACTOR_USER_ID) != null) {
-            return "redirect:/login/verify";
+            if (getPendingUser(session) != null) {
+                return "redirect:/login/verify";
+            }
+            session.removeAttribute(TWO_FACTOR_USER_ID);
         }
         return "login";
     }
@@ -126,6 +129,7 @@ public class AuthController {
     public String verifyPage(HttpSession session, Model model, RedirectAttributes redirectAttributes) {
         AppUser user = getPendingUser(session);
         if (user == null) {
+            session.removeAttribute(TWO_FACTOR_USER_ID);
             redirectAttributes.addFlashAttribute("loginError", "Сначала выполните вход");
             return "redirect:/login";
         }
